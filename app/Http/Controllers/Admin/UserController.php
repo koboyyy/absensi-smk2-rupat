@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\OrangTua;
 use App\Models\Guru;
+use App\Models\Kelas;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +29,8 @@ class UserController extends Controller
     public function create()
     {
         $roles = ['admin', 'guru', 'wali_kelas', 'kepala_sekolah', 'orang_tua', 'guru_bk'];
-        return view('admin.users.create', compact('roles'));
+        $kelas = Kelas::all();
+        return view('admin.users.create', compact('roles', 'kelas'));
     }
 
     /**
@@ -41,10 +43,11 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:6'],
             'role' => ['required', 'in:admin,guru,wali_kelas,kepala_sekolah,orang_tua,guru_bk'],
             'status' => ['required', 'in:aktif,nonaktif'],
-            // Tambahkan field opsional untuk profil
             'nama' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:30'],
             'alamat' => ['nullable', 'string'],
+            // Tambahkan input kelas_id jika role adalah wali_kelas
+            'kelas_id' => ['nullable', 'exists:kelas,kelas_id'],
         ]);
 
         DB::transaction(function () use ($data) {
@@ -56,16 +59,9 @@ class UserController extends Controller
                 'status' => $data['status'],
             ]);
 
-            // 2. Buat data profil sesuai role
-            if ($data['role'] === 'orang_tua') {
-                OrangTua::create([
-                    'user_id' => $user->id,
-                    'nama_ortu' => $data['nama'] ?? $data['username'], // fallback ke username
-                    'no_hp' => $data['no_hp'] ?? null,
-                    'alamat' => $data['alamat'] ?? null,
-                ]);
-            } elseif (in_array($data['role'], ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
-                Guru::create([
+            // 2. Buat data profil Guru (untuk semua role pendidikan)
+            if (in_array($data['role'], ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
+                $guru = Guru::create([
                     'user_id' => $user->id,
                     'nama_guru' => $data['nama'] ?? $data['username'],
                     'nip' => null,
@@ -73,8 +69,22 @@ class UserController extends Controller
                     'no_hp' => $data['no_hp'] ?? null,
                     'alamat' => $data['alamat'] ?? null,
                 ]);
+
+                // 3. LOGIKA BARU: Jika role wali_kelas, isi tabel wali_kelas
+                if ($data['role'] === 'wali_kelas') {
+                    \App\Models\WaliKelas::create([
+                        'guru_id' => $guru->guru_id,
+                        'kelas_id' => $data['kelas_id'] ?? 1, // Pastikan ada input kelas_id dari form
+                    ]);
+                }
+            } elseif ($data['role'] === 'orang_tua') {
+                OrangTua::create([
+                    'user_id' => $user->id,
+                    'nama_ortu' => $data['nama'] ?? $data['username'],
+                    'no_hp' => $data['no_hp'] ?? null,
+                    'alamat' => $data['alamat'] ?? null,
+                ]);
             }
-            // Role 'admin' tidak perlu tabel profil tambahan
         });
 
         return redirect()->route('admin.users.index')->with('success', 'Akun berhasil dibuat.');

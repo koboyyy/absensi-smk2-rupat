@@ -18,11 +18,16 @@ class RoleMiddleware
     {
         $user = Auth::user();
 
-        if (! $user) {
+        // dd([
+        //     'role_user_di_database' => $user->role,
+        //     'role_yang_diminta_di_route' => $roles
+        // ]);
+
+        if (!$user) {
             return redirect()->route('login');
         }
 
-        if ($roles !== [] && ! in_array($user->role, $roles, true)) {
+        if ($roles !== [] && !in_array($user->role, $roles, true)) {
             abort(403);
         }
 

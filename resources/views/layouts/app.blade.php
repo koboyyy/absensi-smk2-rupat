@@ -5,35 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Sistem Absensi - SMKN 2 Rupat' }}</title>
+    @vite('resources/css/app.css')
+
     <script>
-        tailwind = { config: { darkMode: 'class' } };
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        (function () {
-            const key = 'theme';
-            const stored = localStorage.getItem(key);
-            const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            const theme = (stored === 'dark' || stored === 'light') ? stored : preferred;
-            if (theme === 'dark') document.documentElement.classList.add('dark');
-        })();
+        // Cek localStorage atau preferensi sistem
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
     </script>
 </head>
 <body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-    <div class="min-h-full">
+    <div class="min-h-full flex ">
         <header class="border-b border-slate-200 bg-white/80 backdrop-blur dark:border-slate-800 dark:bg-slate-950/70">
-            <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+            <div class="flex flex-col items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
                 <div class="flex items-center gap-3">
-                    <div class="grid h-9 w-9 place-items-center rounded-lg bg-blue-600 text-white">
-                        <span class="text-sm font-bold">A</span>
-                    </div>
+                    <img class="grid h-10 w-10 place-items-center text-white" src="{{ asset('images/logo-smkn-2-rupat.png') }}">
+                        
+                    </img>
                     <div class="leading-tight">
                         <div class="font-semibold text-blue-700 dark:text-blue-400">Absensi SMKN 2 Rupat</div>
                         <div class="text-xs text-slate-500 dark:text-slate-400">Berbasis Website</div>
                     </div>
                 </div>
 
-                <nav class="flex items-center gap-2">
+                
+            </div>
+
+            <nav class="flex flex-col gap-2 px-7">
                     <a href="{{ route('dashboard') }}"
                        class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">
                         Dashboard
@@ -84,10 +84,9 @@
                         </form>
                     @endauth
                 </nav>
-            </div>
         </header>
 
-        <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <main class="w-full px-4 py-6 sm:px-6 lg:px-8">
             @if(session('success'))
                 <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200">
                     {{ session('success') }}
@@ -97,17 +96,21 @@
             @yield('content')
         </main>
     </div>
+
     <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            const btn = document.querySelector('[data-theme-toggle]');
-            if (!btn) return;
-            btn.addEventListener('click', () => {
-                const root = document.documentElement;
-                const next = root.classList.contains('dark') ? 'light' : 'dark';
-                localStorage.setItem('theme', next);
-                root.classList.toggle('dark', next === 'dark');
-            });
-        });
-    </script>
+    const themeToggleBtn = document.querySelector('[data-theme-toggle]');
+
+    themeToggleBtn.addEventListener('click', function() {
+        if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+            localStorage.theme = 'light';
+            this.innerText = 'Dark Mode'; // Ubah teks tombol
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+            this.innerText = 'Light Mode'; // Ubah teks tombol
+        }
+    });
+</script>
 </body>
 </html>

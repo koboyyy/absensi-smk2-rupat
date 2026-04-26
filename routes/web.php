@@ -14,7 +14,7 @@ use App\Http\Controllers\OrangTua\SuratIzinController;
 use App\Http\Controllers\WaliKelas\ValidasiAbsensiController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect()->route('dashboard'));
+Route::get('/', fn() => redirect()->route('dashboard'));
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -23,9 +23,13 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
-Route::middleware(['auth', 'role:admin,guru,wali_kelas,kepala_sekolah,orang_tua,guru_bk'])->group(function () {
+// GRUP UTAMA: Hanya gunakan 'auth' agar semua yang login bisa masuk Dashboard
+Route::middleware(['auth'])->group(function () {
+
+    // Dashboard bisa diakses semua role yang terverifikasi di auth
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // GRUP ADMIN
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::get('users/export/pdf', [UserController::class, 'exportPdf'])->name('users.export.pdf');
         Route::get('guru/export/pdf', [GuruController::class, 'exportPdf'])->name('guru.export.pdf');
@@ -42,10 +46,12 @@ Route::middleware(['auth', 'role:admin,guru,wali_kelas,kepala_sekolah,orang_tua,
         Route::resource('siswa', SiswaController::class);
     });
 
+    // GRUP ORANG TUA
     Route::prefix('orang-tua')->name('ortu.')->middleware('role:orang_tua')->group(function () {
         Route::resource('surat-izin', SuratIzinController::class)->only(['index', 'create', 'store', 'show']);
     });
 
+    // GRUP GURU
     Route::prefix('guru')->name('guru.')->middleware('role:guru')->group(function () {
         Route::get('absensi', [AbsensiController::class, 'index'])->name('absensi.index');
         Route::get('absensi/jadwal/{jadwal}', [AbsensiController::class, 'showForm'])->name('absensi.form');
@@ -57,17 +63,20 @@ Route::middleware(['auth', 'role:admin,guru,wali_kelas,kepala_sekolah,orang_tua,
         Route::post('surat-izin/{suratIzin}/tolak', [SuratIzinInboxController::class, 'reject'])->name('surat-izin.reject');
     });
 
+    // GRUP WALI KELAS - Sekarang bersih tanpa nesting middleware 'role' yang sama
     Route::prefix('wali-kelas')->name('wali.')->middleware('role:wali_kelas')->group(function () {
         Route::get('validasi', [ValidasiAbsensiController::class, 'index'])->name('validasi.index');
         Route::post('validasi', [ValidasiAbsensiController::class, 'validateBatch'])->name('validasi.batch');
         Route::get('rekap', [ValidasiAbsensiController::class, 'rekap'])->name('rekap.index');
     });
 
+    // GRUP BK
     Route::prefix('bk')->name('bk.')->middleware('role:guru_bk')->group(function () {
         Route::get('rekap', [\App\Http\Controllers\BK\RekapController::class, 'index'])->name('rekap.index');
         Route::get('rekap/export/pdf', [\App\Http\Controllers\BK\RekapController::class, 'exportPdf'])->name('rekap.export.pdf');
     });
 
+    // GRUP KEPSEK
     Route::prefix('kepsek')->name('kepsek.')->middleware('role:kepala_sekolah')->group(function () {
         Route::get('laporan', [\App\Http\Controllers\Kepsek\LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/export/pdf', [\App\Http\Controllers\Kepsek\LaporanController::class, 'exportPdf'])->name('laporan.export.pdf');

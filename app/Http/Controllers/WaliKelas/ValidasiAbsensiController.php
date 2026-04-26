@@ -17,6 +17,15 @@ class ValidasiAbsensiController extends Controller
     {
         $guruId = Guru::query()->where('user_id', Auth::id())->value('guru_id');
         $kelasId = WaliKelas::query()->where('guru_id', $guruId)->value('kelas_id');
+
+        // Cek apa yang kosong
+        if (!$guruId) {
+            return "Error: User ini tidak ditemukan di tabel GURU.";
+        }
+        if (!$kelasId) {
+            return "Error: Guru ini tidak terdaftar sebagai WALI KELAS di tabel wali_kelas.";
+        }
+
         abort_unless((bool) $kelasId, 403);
 
         $tanggal = $request->query('tanggal', now()->toDateString());
@@ -24,7 +33,7 @@ class ValidasiAbsensiController extends Controller
         $items = Absensi::query()
             ->with(['siswa', 'jadwal.mapel'])
             ->whereDate('tanggal', $tanggal)
-            ->whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
+            ->whereHas('siswa', fn($q) => $q->where('kelas_id', $kelasId))
             ->orderBy('jadwal_id')
             ->orderBy('siswa_id')
             ->get();
@@ -50,7 +59,7 @@ class ValidasiAbsensiController extends Controller
             Absensi::query()
                 ->whereIn('absensi_id', $data['absensi_id'])
                 ->whereDate('tanggal', $tanggal)
-                ->whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
+                ->whereHas('siswa', fn($q) => $q->where('kelas_id', $kelasId))
                 ->update(['wali_validasi' => true]);
         });
 
@@ -71,7 +80,7 @@ class ValidasiAbsensiController extends Controller
 
         $rows = Absensi::query()
             ->whereBetween('tanggal', [$from, $to])
-            ->whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
+            ->whereHas('siswa', fn($q) => $q->where('kelas_id', $kelasId))
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status')
