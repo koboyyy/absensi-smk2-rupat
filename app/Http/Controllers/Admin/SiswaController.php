@@ -45,7 +45,7 @@ class SiswaController extends Controller
             'jenis_kelamin' => ['required', 'in:L,P'],
             'alamat' => ['nullable', 'string'],
             'kelas_id' => ['required', 'exists:kelas,kelas_id'],
-            'ortu_id' => ['nullable', 'exists:orang_tuas,ortu_id'],
+            'ortu_id' => ['required', 'exists:orang_tuas,ortu_id'],
             'foto' => ['nullable', 'string', 'max:255'],
         ]);
 

@@ -39,4 +39,13 @@ class Siswa extends Model
     {
         return $this->hasMany(SuratIzin::class, 'siswa_id', 'siswa_id');
     }
+
+    /**
+     * Relasi ke data Absensi
+     */
+    public function absensi(): HasMany
+    {
+        // Sesuaikan 'siswa_id' dengan nama kolom di tabel absensi yang merujuk ke siswa
+        return $this->hasMany(Absensi::class, 'siswa_id', 'siswa_id');
+    }
 }

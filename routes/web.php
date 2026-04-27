@@ -10,7 +10,9 @@ use App\Http\Controllers\Admin\SiswaController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Guru\AbsensiController;
 use App\Http\Controllers\Guru\SuratIzinInboxController;
+use App\Http\Controllers\Guru\RekapKehadiranController;
 use App\Http\Controllers\OrangTua\SuratIzinController;
+use App\Http\Controllers\OrangTua\JadwalAnakController;
 use App\Http\Controllers\WaliKelas\ValidasiAbsensiController;
 use Illuminate\Support\Facades\Route;
 
@@ -49,6 +51,7 @@ Route::middleware(['auth'])->group(function () {
     // GRUP ORANG TUA
     Route::prefix('orang-tua')->name('ortu.')->middleware('role:orang_tua')->group(function () {
         Route::resource('surat-izin', SuratIzinController::class)->only(['index', 'create', 'store', 'show']);
+        Route::resource('jadwal', JadwalAnakController::class)->only(['index', 'show']);
     });
 
     // GRUP GURU
@@ -57,10 +60,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('absensi/jadwal/{jadwal}', [AbsensiController::class, 'showForm'])->name('absensi.form');
         Route::post('absensi/jadwal/{jadwal}', [AbsensiController::class, 'store'])->name('absensi.store');
 
+        // RUTE BARU UNTUK REKAP
+        Route::get('rekap-kehadiran', [RekapKehadiranController::class, 'index'])->name('rekap-kehadiran.index');
+
         Route::get('surat-izin', [SuratIzinInboxController::class, 'index'])->name('surat-izin.index');
         Route::get('surat-izin/{suratIzin}', [SuratIzinInboxController::class, 'show'])->name('surat-izin.show');
         Route::post('surat-izin/{suratIzin}/terima', [SuratIzinInboxController::class, 'accept'])->name('surat-izin.accept');
         Route::post('surat-izin/{suratIzin}/tolak', [SuratIzinInboxController::class, 'reject'])->name('surat-izin.reject');
+
+        Route::get('rekap-kehadiran/pdf', [RekapKehadiranController::class, 'exportPdf'])->name('rekap-kehadiran.pdf');
     });
 
     // GRUP WALI KELAS - Sekarang bersih tanpa nesting middleware 'role' yang sama
@@ -68,6 +76,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('validasi', [ValidasiAbsensiController::class, 'index'])->name('validasi.index');
         Route::post('validasi', [ValidasiAbsensiController::class, 'validateBatch'])->name('validasi.batch');
         Route::get('rekap', [ValidasiAbsensiController::class, 'rekap'])->name('rekap.index');
+
+        // Rute Baru
+        Route::get('rekap/pdf', [ValidasiAbsensiController::class, 'exportPdf'])->name('rekap.pdf');
     });
 
     // GRUP BK

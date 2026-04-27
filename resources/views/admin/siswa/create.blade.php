@@ -42,7 +42,7 @@
                 @error('kelas_id')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
             </div>
             <div>
-                <label class="mb-1 block text-sm font-medium">Orang Tua (opsional)</label>
+                <label class="mb-1 block text-sm font-medium">Orang Tua</label>
                 <select name="ortu_id" class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
                     <option value="">-</option>
                     @foreach($ortu as $o)

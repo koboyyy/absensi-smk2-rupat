@@ -101,4 +101,55 @@ class ValidasiAbsensiController extends Controller
 
         return view('wali.rekap.index', compact('bulan', 'tahun', 'rekap'));
     }
+
+    public function exportPdf(Request $request)
+    {
+        $bulan = $request->get('bulan', date('m'));
+        $tahun = $request->get('tahun', date('Y'));
+
+        // Pastikan relasi waliKelas dan kelas sudah didefinisikan di model Guru
+        $guru = Auth::user()->guru;
+        $waliKelas = $guru->waliKelas;
+        $kelas = $waliKelas->kelas;
+        $siswas = $kelas->siswas()->orderBy('nama_siswa')->get();
+
+        $jumlahHari = cal_days_in_month(CAL_GREGORIAN, $bulan, $tahun);
+        $dataAbsen = [];
+        $totalPerSiswa = [];
+
+        foreach ($siswas as $siswa) {
+            $totalPerSiswa[$siswa->siswa_id] = ['H' => 0, 'S' => 0, 'I' => 0, 'A' => 0];
+
+            for ($tgl = 1; $tgl <= $jumlahHari; $tgl++) {
+                // Gunakan format Y-m-d untuk query ke database
+                $tanggalFull = sprintf('%04d-%02d-%02d', $tahun, $bulan, $tgl);
+
+                // Pastikan kolom 'tanggal' di database sesuai dengan format $tanggalFull
+                $absen = \App\Models\Absensi::where('siswa_id', $siswa->siswa_id)
+                    ->whereDate('tanggal', $tanggalFull)
+                    ->first();
+
+                if ($absen) {
+                    $status = $absen->status;
+                    $dataAbsen[$siswa->siswa_id][$tgl] = $status;
+                    $totalPerSiswa[$siswa->siswa_id][$status]++;
+                } else {
+                    $dataAbsen[$siswa->siswa_id][$tgl] = '';
+                }
+            }
+        }
+
+        $pdf = \PDF::loadView('wali.rekap.pdf', [
+            'siswas' => $siswas,
+            'dataAbsen' => $dataAbsen,
+            'totalPerSiswa' => $totalPerSiswa,
+            'bulan' => $bulan,
+            'tahun' => $tahun,
+            'nama_kelas' => $kelas->nama_kelas,
+            'jumlahHari' => $jumlahHari,
+            'guru' => $guru // Data guru untuk tanda tangan
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->stream("Rekap_Absensi_{$kelas->nama_kelas}.pdf");
+    }
 }

@@ -34,13 +34,14 @@
             </div>
 
             <nav class="flex flex-col gap-2 px-7">
-                    <a href="{{ route('dashboard') }}"
+                    {{-- <a href="{{ route('dashboard') }}"
                        class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">
                         Dashboard
-                    </a>
+                    </a> --}}
 
                     @auth
                         @if(auth()->user()->role === 'admin')
+                            <a href="{{ route('dashboard') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Dashboard</a>
                             <a href="{{ route('admin.users.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Users</a>
                             <a href="{{ route('admin.guru.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Guru</a>
                             <a href="{{ route('admin.kelas.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Kelas</a>
@@ -51,10 +52,12 @@
 
                         @if(auth()->user()->role === 'orang_tua')
                             <a href="{{ route('ortu.surat-izin.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Surat Izin</a>
+                            <a href="{{ route('ortu.jadwal.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Jadwal Siswa</a>
                         @endif
 
                         @if(auth()->user()->role === 'guru')
-                            <a href="{{ route('guru.absensi.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Absensi</a>
+                            <a href="{{ route('guru.absensi.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Absensi Siswa</a>
+                            <a href="{{ route('guru.rekap-kehadiran.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Rekap Kehadiran</a>
                             <a href="{{ route('guru.surat-izin.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Surat Izin</a>
                         @endif
 

@@ -36,34 +36,44 @@
         </div>
 
         <div class="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-slate-50 text-slate-600 dark:bg-slate-900/40 dark:text-slate-300">
-                <tr>
-                    <th class="px-4 py-3">NIS</th>
-                    <th class="px-4 py-3">Nama</th>
-                    <th class="px-4 py-3">Status</th>
+    <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-600 dark:bg-slate-900/40 dark:text-slate-300">
+            <tr>
+                <th class="px-4 py-3">NIS</th>
+                <th class="px-4 py-3">Nama</th>
+                <th class="px-4 py-3">Status</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+            @foreach($siswas as $s)
+                @php($cur = $existing[$s->siswa_id]->status ?? 'H')
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                    <td class="px-4 py-3 font-mono text-xs">{{ $s->nis }}</td>
+                    <td class="px-4 py-3 font-medium">{{ $s->nama_siswa }}</td>
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-4">
+                            @foreach(['H'=>'Hadir','S'=>'Sakit','I'=>'Izin','A'=>'Alfa'] as $k => $lbl)
+                                <label class="flex cursor-pointer items-center gap-1.5 group">
+                                    <input type="radio" 
+                                           name="status[{{ $s->siswa_id }}]" 
+                                           value="{{ $k }}" 
+                                           @checked(old("status.$s->siswa_id", $cur) === $k)
+                                           class="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900">
+                                    <span class="text-slate-600 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400">
+                                        {{ $lbl }}
+                                    </span>
+                                </label>
+                            @endforeach
+                        </div>
+                        @error("status.$s->siswa_id")
+                            <div class="mt-1 text-xs text-red-600">{{ $message }}</div>
+                        @enderror
+                    </td>
                 </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-                @foreach($siswas as $s)
-                    @php($cur = $existing[$s->siswa_id]->status ?? 'H')
-                    <tr>
-                        <td class="px-4 py-3 font-mono">{{ $s->nis }}</td>
-                        <td class="px-4 py-3 font-medium">{{ $s->nama_siswa }}</td>
-                        <td class="px-4 py-3">
-                            <select name="status[{{ $s->siswa_id }}]"
-                                    class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950">
-                                @foreach(['H'=>'Hadir','S'=>'Sakit','I'=>'Izin','A'=>'Alfa'] as $k => $lbl)
-                                    <option value="{{ $k }}" @selected(old("status.$s->siswa_id", $cur)===$k)>{{ $k }} - {{ $lbl }}</option>
-                                @endforeach
-                            </select>
-                            @error("status.$s->siswa_id")<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-                        </td>
-                    </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
+            @endforeach
+        </tbody>
+    </table>
+</div>
 
         @error('status')<div class="text-sm text-red-600">{{ $message }}</div>@enderror
 
