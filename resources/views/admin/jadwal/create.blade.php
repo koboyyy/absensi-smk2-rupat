@@ -1,6 +1,11 @@
 @extends('layouts.app', ['title' => 'Tambah Jadwal'])
 
 @section('content')
+
+    {{-- Letakkan di bagian atas content --}}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <div class="mb-4 flex items-center justify-between">
         <div class="text-xl font-bold">Tambah Jadwal</div>
         <a href="{{ route('admin.jadwal.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900">Kembali</a>
@@ -12,23 +17,26 @@
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div>
-                <label class="mb-1 block text-sm font-medium">Hari</label>
-                <input name="hari" value="{{ old('hari') }}" placeholder="Senin"
-                       class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
-                @error('hari')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-            </div>
+    <label class="mb-1 block text-sm font-medium">Hari</label>
+    <select name="hari" class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+        @foreach(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'] as $hari)
+            <option value="{{ $hari }}" @selected(old('hari') == $hari)>{{ $hari }}</option>
+        @endforeach
+    </select>
+    @error('hari')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+</div>
             <div>
-                <label class="mb-1 block text-sm font-medium">Jam Mulai</label>
-                <input type="time" name="jam_mulai" value="{{ old('jam_mulai') }}"
-                       class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
-                @error('jam_mulai')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-            </div>
-            <div>
-                <label class="mb-1 block text-sm font-medium">Jam Selesai</label>
-                <input type="time" name="jam_selesai" value="{{ old('jam_selesai') }}"
-                       class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
-                @error('jam_selesai')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
-            </div>
+    <label class="mb-1 block text-sm font-medium">Jam Mulai</label>
+    <input type="text" name="jam_mulai" id="jam_mulai" value="{{ old('jam_mulai') }}" placeholder="07:00"
+           class="timepicker w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+    @error('jam_mulai')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+</div>
+<div>
+    <label class="mb-1 block text-sm font-medium">Jam Selesai</label>
+    <input type="text" name="jam_selesai" id="jam_selesai" value="{{ old('jam_selesai') }}" placeholder="09:00"
+           class="timepicker w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+    @error('jam_selesai')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
+</div>
         </div>
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -63,5 +71,17 @@
 
         <button class="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">Simpan</button>
     </form>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        flatpickr(".timepicker", {
+            enableTime: true,
+            noCalendar: true,
+            dateFormat: "H:i", // Format 24 Jam (Contoh: 13:45)
+            time_24hr: true,   // Memaksa format 24 jam ala Indonesia
+            minuteIncrement: 5 // Opsional: loncatan menit per 5 menit
+        });
+    });
+</script>
 @endsection
 

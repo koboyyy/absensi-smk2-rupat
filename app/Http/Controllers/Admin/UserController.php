@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\OrangTua;
 use App\Models\Guru;
 use App\Models\Kelas;
+use App\Models\WaliKelas;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,13 +20,11 @@ class UserController extends Controller
      */
     public function index()
     {
+        // Menggunakan eager loading agar tidak berat saat load data kelas (jika ada relasi)
         $items = User::query()->orderBy('role')->orderBy('username')->paginate(15);
         return view('admin.users.index', compact('items'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         $roles = ['admin', 'guru', 'wali_kelas', 'kepala_sekolah', 'orang_tua', 'guru_bk'];
@@ -33,9 +32,6 @@ class UserController extends Controller
         return view('admin.users.create', compact('roles', 'kelas'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -46,8 +42,8 @@ class UserController extends Controller
             'nama' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:30'],
             'alamat' => ['nullable', 'string'],
-            // Tambahkan input kelas_id jika role adalah wali_kelas
-            'kelas_id' => ['nullable', 'exists:kelas,kelas_id'],
+            // Validasi: Wajib diisi jika role adalah wali_kelas
+            'kelas_id' => ['required_if:role,wali_kelas', 'nullable', 'exists:kelas,kelas_id'],
         ]);
 
         DB::transaction(function () use ($data) {
@@ -59,7 +55,7 @@ class UserController extends Controller
                 'status' => $data['status'],
             ]);
 
-            // 2. Buat data profil Guru (untuk semua role pendidikan)
+            // 2. Buat data profil profil
             if (in_array($data['role'], ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
                 $guru = Guru::create([
                     'user_id' => $user->id,
@@ -70,12 +66,12 @@ class UserController extends Controller
                     'alamat' => $data['alamat'] ?? null,
                 ]);
 
-                // 3. LOGIKA BARU: Jika role wali_kelas, isi tabel wali_kelas
-                if ($data['role'] === 'wali_kelas') {
-                    \App\Models\WaliKelas::create([
-                        'guru_id' => $guru->guru_id,
-                        'kelas_id' => $data['kelas_id'] ?? 1, // Pastikan ada input kelas_id dari form
-                    ]);
+                // 3. Jika role wali_kelas, hubungkan ke tabel wali_kelas
+                if ($data['role'] === 'wali_kelas' && !empty($data['kelas_id'])) {
+                    WaliKelas::updateOrCreate(
+                        ['kelas_id' => $data['kelas_id']], // Mencegah 1 kelas punya 2 wali
+                        ['guru_id' => $guru->guru_id]
+                    );
                 }
             } elseif ($data['role'] === 'orang_tua') {
                 OrangTua::create([
@@ -90,27 +86,21 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'Akun berhasil dibuat.');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        return redirect()->route('admin.users.edit', $id);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
         $item = User::query()->findOrFail($id);
+        $kelas = Kelas::all();
         $roles = ['admin', 'guru', 'wali_kelas', 'kepala_sekolah', 'orang_tua', 'guru_bk'];
-        return view('admin.users.edit', compact('item', 'roles'));
+
+        // Ambil kelas_id jika user ini adalah wali kelas untuk ditampilkan di form
+        if ($item->role === 'wali_kelas' && $item->guru) {
+            $currentWali = WaliKelas::where('guru_id', $item->guru->guru_id)->first();
+            $item->kelas_id = $currentWali ? $currentWali->kelas_id : null;
+        }
+
+        return view('admin.users.edit', compact('item', 'roles', 'kelas'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         $item = User::query()->findOrFail($id);
@@ -119,67 +109,98 @@ class UserController extends Controller
             'password' => ['nullable', 'string', 'min:6'],
             'role' => ['required', 'in:admin,guru,wali_kelas,kepala_sekolah,orang_tua,guru_bk'],
             'status' => ['required', 'in:aktif,nonaktif'],
+            'kelas_id' => ['required_if:role,wali_kelas', 'nullable', 'exists:kelas,kelas_id'],
         ]);
 
-        $oldRole = $item->role;
+        DB::transaction(function () use ($item, $data) {
+            $oldRole = $item->role;
 
-        $update = [
-            'username' => $data['username'],
-            'role' => $data['role'],
-            'status' => $data['status'],
-        ];
-        if (!empty($data['password'])) {
-            $update['password'] = Hash::make($data['password']);
-        }
-        $item->update($update);
+            // 1. Update User
+            $updateData = [
+                'username' => $data['username'],
+                'role' => $data['role'],
+                'status' => $data['status'],
+            ];
+            if (!empty($data['password'])) {
+                $updateData['password'] = Hash::make($data['password']);
+            }
+            $item->update($updateData);
 
-        // Jika role berubah, sinkronkan tabel profil
-        if ($oldRole !== $data['role']) {
-            // Hapus profil lama
-            if ($oldRole === 'orang_tua') {
-                OrangTua::where('user_id', $item->id)->delete();
-            } elseif (in_array($oldRole, ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
-                Guru::where('user_id', $item->id)->delete();
+            // 2. Sinkronisasi Profil Jika Role Berubah
+            if ($oldRole !== $data['role']) {
+                $this->handleRoleSwitch($item, $oldRole, $data['role']);
             }
 
-            // Buat profil baru
-            if ($data['role'] === 'orang_tua') {
-                OrangTua::create([
-                    'user_id' => $item->id,
-                    'nama_ortu' => $data['username'],
-                    'no_hp' => null,
-                    'alamat' => null,
-                ]);
-            } elseif (in_array($data['role'], ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
-                Guru::create([
-                    'user_id' => $item->id,
-                    'nama_guru' => $data['username'],
-                    'nip' => null,
-                    'jenis_kelamin' => 'L',
-                    'no_hp' => null,
-                    'alamat' => null,
-                ]);
+            // 3. Update/Sinkronisasi Data Wali Kelas
+            if ($data['role'] === 'wali_kelas') {
+                $guru = Guru::where('user_id', $item->id)->first();
+                if ($guru) {
+                    // Hapus penugasan wali kelas lama untuk guru ini (jika ada)
+                    WaliKelas::where('guru_id', $guru->guru_id)->delete();
+
+                    // Buat penugasan baru
+                    WaliKelas::updateOrCreate(
+                        ['kelas_id' => $data['kelas_id']],
+                        ['guru_id' => $guru->guru_id]
+                    );
+                }
+            } else {
+                // Jika ganti dari wali_kelas ke role lain, hapus data di tabel WaliKelas
+                $guru = Guru::where('user_id', $item->id)->first();
+                if ($guru) {
+                    WaliKelas::where('guru_id', $guru->guru_id)->delete();
+                }
             }
-        }
+        });
 
         return redirect()->route('admin.users.index')->with('success', 'Akun berhasil diperbarui.');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Helper untuk menangani perpindahan profil saat role berubah
      */
+    private function handleRoleSwitch($user, $oldRole, $newRole)
+    {
+        // Hapus Profil Lama
+        if ($oldRole === 'orang_tua') {
+            OrangTua::where('user_id', $user->id)->delete();
+        } elseif (in_array($oldRole, ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
+            // Jika pindah sesama rumpun guru, tidak perlu hapus tabel Guru,
+            // tapi jika pindah ke admin/ortu, baru hapus.
+            if (!in_array($newRole, ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
+                Guru::where('user_id', $user->id)->delete();
+            }
+        }
+
+        // Buat Profil Baru (Jika belum ada)
+        if ($newRole === 'orang_tua') {
+            OrangTua::firstOrCreate(['user_id' => $user->id], [
+                'nama_ortu' => $user->username,
+            ]);
+        } elseif (in_array($newRole, ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
+            Guru::firstOrCreate(['user_id' => $user->id], [
+                'nama_guru' => $user->username,
+                'jenis_kelamin' => 'L',
+            ]);
+        }
+    }
+
     public function destroy(string $id)
     {
         $item = User::query()->findOrFail($id);
 
-        // Hapus profil terkait (FK sudah cascadeOnDelete, tapi ini lebih eksplisit)
-        if ($item->role === 'orang_tua') {
-            OrangTua::where('user_id', $item->id)->delete();
-        } elseif (in_array($item->role, ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
-            Guru::where('user_id', $item->id)->delete();
-        }
-
-        $item->delete();
+        DB::transaction(function () use ($item) {
+            if ($item->role === 'orang_tua') {
+                OrangTua::where('user_id', $item->id)->delete();
+            } elseif (in_array($item->role, ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
+                $guru = Guru::where('user_id', $item->id)->first();
+                if ($guru) {
+                    WaliKelas::where('guru_id', $guru->guru_id)->delete();
+                    $guru->delete();
+                }
+            }
+            $item->delete();
+        });
 
         return redirect()->route('admin.users.index')->with('success', 'Akun berhasil dihapus.');
     }
