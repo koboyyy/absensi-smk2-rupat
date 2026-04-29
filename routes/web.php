@@ -69,6 +69,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('surat-izin/{suratIzin}/tolak', [SuratIzinInboxController::class, 'reject'])->name('surat-izin.reject');
 
         Route::get('rekap-kehadiran/pdf', [RekapKehadiranController::class, 'exportPdf'])->name('rekap-kehadiran.pdf');
+        Route::get('absensi/rekap/{jadwal}', [AbsensiController::class, 'rekapJadwal'])->name('absensi.rekap-jadwal');
+        Route::get('absensi/rekap/{jadwal}/pdf', [AbsensiController::class, 'exportPdf'])->name('absensi.rekap-pdf');
     });
 
     // GRUP WALI KELAS - Sekarang bersih tanpa nesting middleware 'role' yang sama

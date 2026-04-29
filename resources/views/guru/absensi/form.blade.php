@@ -7,13 +7,21 @@
             <div class="text-xl font-bold">Absensi: {{ $jadwal->mapel?->nama_mapel }} ({{ $jadwal->kelas?->nama_kelas }})</div>
         </div>
 
-        <form method="GET" action="{{ route('guru.absensi.form', $jadwal->jadwal_id) }}" class="flex items-center gap-2">
-            <input type="date" name="tanggal" value="{{ $tanggal }}"
-                   class="rounded-xl border border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950">
-            <button class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900">
-                Tampilkan
-            </button>
-        </form>
+        <div class="flex gap-4">
+            <form method="GET" action="{{ route('guru.absensi.form', $jadwal->jadwal_id) }}" class="flex items-center gap-2">
+                <input type="date" name="tanggal" value="{{ $tanggal }}"
+                       class="rounded-xl border border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950">
+                <button class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900">
+                    Tampilkan
+                </button>
+            </form>
+
+            <a href="{{ route('guru.absensi.rekap-jadwal', $jadwal->jadwal_id) }}" 
+               class="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white hover:bg-amber-600 transition-all shadow-sm">
+                <i class="fa-solid fa-file-invoice"></i>
+                Rekap Absen
+            </a>
+        </div>
     </div>
 
     <form method="POST" action="{{ route('guru.absensi.store', $jadwal->jadwal_id) }}" enctype="multipart/form-data"
@@ -44,34 +52,68 @@
                 <th class="px-4 py-3">Status</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
-            @foreach($siswas as $s)
-                @php($cur = $existing[$s->siswa_id]->status ?? 'H')
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/50">
-                    <td class="px-4 py-3 font-mono text-xs">{{ $s->nis }}</td>
-                    <td class="px-4 py-3 font-medium">{{ $s->nama_siswa }}</td>
-                    <td class="px-4 py-3">
-                        <div class="flex items-center gap-4">
-                            @foreach(['H'=>'Hadir','S'=>'Sakit','I'=>'Izin','A'=>'Alfa'] as $k => $lbl)
-                                <label class="flex cursor-pointer items-center gap-1.5 group">
-                                    <input type="radio" 
-                                           name="status[{{ $s->siswa_id }}]" 
-                                           value="{{ $k }}" 
-                                           @checked(old("status.$s->siswa_id", $cur) === $k)
-                                           class="h-4 w-4 border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900">
-                                    <span class="text-slate-600 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400">
-                                        {{ $lbl }}
-                                    </span>
-                                </label>
-                            @endforeach
+        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+    @foreach($siswas as $index => $s)
+        @php($cur = $existing[$s->siswa_id]->status ?? 'H')
+        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
+            {{-- Kolom No --}}
+            <td class="px-6 py-4 text-slate-400 font-medium text-xs">{{ $index + 1 }}</td>
+            
+            {{-- Kolom NIS & Nama Siswa (DENGAN FOTO) --}}
+            <td class="px-6 py-4">
+                <div class="flex items-center gap-4">
+                    {{-- Foto Siswa --}}
+                    <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-100 bg-slate-100 dark:border-slate-800 dark:bg-slate-900 flex items-center justify-center text-slate-400">
+                        @if($s->foto)
+                            {{-- Jika ada foto, tampilkan (Asumsi foto disimpan di storage/public) --}}
+                            <img src="{{ asset('storage/' . $s->foto) }}" alt="{{ $s->nama_siswa }}" class="h-full w-full object-cover">
+                        @else
+                            {{-- Jika tidak ada foto, tampilkan Icon Placeholder (fa-solid fa-user) --}}
+                            <i class="fa-solid fa-user text-sm"></i>
+                        @endif
+                    </div>
+                    
+                    {{-- Identitas Teks --}}
+                    <div>
+                        <div class="font-bold text-slate-900 dark:text-white leading-tight">
+                            {{ $s->nama_siswa }}
                         </div>
-                        @error("status.$s->siswa_id")
-                            <div class="mt-1 text-xs text-red-600">{{ $message }}</div>
-                        @enderror
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
+                        <div class="text-[11px] font-mono text-slate-400 mt-0.5">
+                            NIS: {{ $s->nis }}
+                        </div>
+                    </div>
+                </div>
+            </td>
+            
+            {{-- Kolom Status Kehadiran --}}
+            <td class="px-6 py-4">
+                <div class="flex items-center justify-center gap-3">
+                    @foreach(['H'=>'H','S'=>'S','I'=>'I','A'=>'A'] as $k => $label)
+                        <label class="relative flex cursor-pointer items-center justify-center">
+                            {{-- Radio Input (Hidden) --}}
+                            <input type="radio" 
+                                   name="status[{{ $s->siswa_id }}]" 
+                                   value="{{ $k }}" 
+                                   @checked(old("status.$s->siswa_id", $cur) === $k)
+                                   class="peer sr-only">
+                            
+                            {{-- Lingkaran Huruf --}}
+                            <div class="h-9 w-9 rounded-full border-2 border-slate-200 flex items-center justify-center text-xs font-black transition-all
+                                peer-checked:border-slate-800 peer-checked:bg-slate-800 peer-checked:text-white
+                                dark:border-slate-700 dark:peer-checked:border-slate-300 dark:peer-checked:bg-slate-300 dark:peer-checked:text-slate-950
+                                hover:border-slate-400">
+                                {{ $label }}
+                            </div>
+                        </label>
+                    @endforeach
+                </div>
+                @error("status.$s->siswa_id")
+                    <div class="mt-1 text-center text-[10px] text-red-600 uppercase font-bold">{{ $message }}</div>
+                @enderror
+            </td>
+        </tr>
+    @endforeach
+</tbody>
     </table>
 </div>
 

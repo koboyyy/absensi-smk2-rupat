@@ -9,12 +9,10 @@ use App\Models\Siswa;
 use App\Models\SuratIzin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class SuratIzinController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $ortuId = OrangTua::query()->where('user_id', Auth::id())->value('ortu_id');
@@ -27,9 +25,6 @@ class SuratIzinController extends Controller
         return view('ortu.surat_izin.index', compact('items'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         $ortuId = OrangTua::query()->where('user_id', Auth::id())->value('ortu_id');
@@ -43,28 +38,23 @@ class SuratIzinController extends Controller
         return view('ortu.surat_izin.create', compact('siswas', 'jadwals'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $ortuId = OrangTua::query()->where('user_id', Auth::id())->value('ortu_id');
 
-        // Tambahkan ini untuk cek
         if (!$ortuId) {
-            return back()->withErrors(['error' => 'Profil orang tua tidak ditemukan. Silakan hubungi admin.']);
+            return back()->withErrors(['error' => 'Profil orang tua tidak ditemukan.']);
         }
-
 
         $data = $request->validate([
             'siswa_id' => ['required', 'exists:siswas,siswa_id'],
-            'jadwal_id' => ['required', 'exists:jadwals,jadwal_id'],
+            'jadwal_id' => ['required', 'array'], // Modifikasi: Validasi sebagai array
+            'jadwal_id.*' => ['exists:jadwals,jadwal_id'],
             'tanggal' => ['required', 'date'],
             'keterangan' => ['nullable', 'string'],
-            'file_bukti' => ['nullable', 'file', 'max:2048'],
+            'file_bukti' => ['nullable', 'file', 'max:2048', 'mimes:jpg,jpeg,png,pdf'],
         ]);
 
-        // pastikan siswa milik orang tua yang login
         $siswaOwned = Siswa::query()->where('siswa_id', $data['siswa_id'])->where('ortu_id', $ortuId)->exists();
         abort_unless($siswaOwned, 403);
 
@@ -73,43 +63,31 @@ class SuratIzinController extends Controller
             $path = $request->file('file_bukti')->store('surat_izin', 'public');
         }
 
-        SuratIzin::create([
-            'siswa_id' => $data['siswa_id'],
-            'ortu_id' => $ortuId,
-            'jadwal_id' => $data['jadwal_id'],
-            'tanggal' => $data['tanggal'],
-            'keterangan' => $data['keterangan'] ?? null,
-            'file_bukti' => $path,
-            'status' => 'pending',
-        ]);
+        // Modifikasi: Looping untuk menyimpan banyak jadwal sekaligus
+        foreach ($data['jadwal_id'] as $idJadwal) {
+            SuratIzin::create([
+                'siswa_id' => $data['siswa_id'],
+                'ortu_id' => $ortuId,
+                'jadwal_id' => $idJadwal,
+                'tanggal' => $data['tanggal'],
+                'keterangan' => $data['keterangan'] ?? null,
+                'file_bukti' => $path,
+                'status' => 'pending',
+            ]);
+        }
 
-        return redirect()->route('ortu.surat-izin.index')->with('success', 'Surat izin berhasil dikirim.');
+        return redirect()->route('ortu.surat-izin.index')->with('success', 'Surat izin berhasil dikirim untuk ' . count($data['jadwal_id']) . ' mata pelajaran.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         $ortuId = OrangTua::query()->where('user_id', Auth::id())->value('ortu_id');
-        $item = SuratIzin::query()->with(['siswa', 'jadwal.mapel', 'jadwal.guru'])->where('ortu_id', $ortuId)->findOrFail($id);
+        $item = SuratIzin::query()
+            ->with(['siswa.kelas', 'jadwal.mapel', 'jadwal.guru'])
+            ->where('ortu_id', $ortuId)
+            ->findOrFail($id);
+
         return view('ortu.surat_izin.show', compact('item'));
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        abort(404);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        abort(404);
     }
 
     /**
@@ -117,6 +95,21 @@ class SuratIzinController extends Controller
      */
     public function destroy(string $id)
     {
-        abort(404);
+        $ortuId = OrangTua::query()->where('user_id', Auth::id())->value('ortu_id');
+        $item = SuratIzin::query()->where('ortu_id', $ortuId)->findOrFail($id);
+
+        // Hanya boleh hapus jika status masih pending
+        if ($item->status !== 'pending') {
+            return back()->with('error', 'Surat yang sudah diproses tidak dapat dihapus.');
+        }
+
+        // Hapus file bukti jika ada
+        if ($item->file_bukti) {
+            Storage::disk('public')->delete($item->file_bukti);
+        }
+
+        $item->delete();
+
+        return redirect()->route('ortu.surat-izin.index')->with('success', 'Surat izin berhasil dibatalkan.');
     }
 }

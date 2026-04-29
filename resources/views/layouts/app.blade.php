@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'Sistem Absensi - SMKN 2 Rupat' }}</title>
+    <link href="{{ asset('resources/css/all.min.css') }}" rel="stylesheet">
     @vite('resources/css/app.css')
 
     <script>
@@ -34,10 +35,10 @@
             </div>
 
             <nav class="flex flex-col gap-2 px-7">
-                    <a href="{{ route('dashboard') }}"
+                    {{-- <a href="{{ route('dashboard') }}"
                        class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">
                         Dashboard
-                    </a>
+                    </a> --}}
 
                     @auth
                         @if(auth()->user()->role === 'admin')
@@ -50,14 +51,15 @@
                         @endif
 
                         @if(auth()->user()->role === 'orang_tua')
-                            <a href="{{ route('ortu.jadwal.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Jadwal Siswa</a>
+                            <a href="{{ route('ortu.jadwal.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Monitoring Kehadiran</a>
                             <a href="{{ route('ortu.surat-izin.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Surat Izin</a>
                         @endif
 
                         @if(auth()->user()->role === 'guru')
+                            <a href="{{ route('dashboard') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Dashboard</a>
                             <a href="{{ route('guru.absensi.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Absensi Siswa</a>
-                            <a href="{{ route('guru.rekap-kehadiran.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Rekap Kehadiran</a>
-                            <a href="{{ route('guru.surat-izin.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Surat Izin</a>
+                            {{-- <a href="{{ route('guru.rekap-kehadiran.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Rekap Kehadiran</a> --}}
+                            <a href="{{ route('guru.surat-izin.index') }}" class="rounded-lg px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-900">Surat Masuk</a>
                         @endif
 
                         @if(auth()->user()->role === 'wali_kelas')

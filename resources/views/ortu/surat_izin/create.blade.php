@@ -1,6 +1,21 @@
 @extends('layouts.app', ['title' => 'Buat Surat Izin'])
 
 @section('content')
+    {{-- Tambahkan CDN Select2 di bagian atas atau di layout utama --}}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* Penyesuaian agar Select2 cocok dengan gaya Tailwind Anda */
+        .select2-container--default .select2-selection--multiple {
+            border-radius: 0.75rem;
+            border-color: #e2e8f0;
+            padding: 5px;
+        }
+        .dark .select2-container--default .select2-selection--multiple {
+            background-color: #020617;
+            border-color: #1e293b;
+        }
+    </style>
+
     <div class="mb-4 flex items-center justify-between">
         <div class="text-xl font-bold">Buat Surat Izin / Sakit</div>
         <a href="{{ route('ortu.surat-izin.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900">Kembali</a>
@@ -31,11 +46,12 @@
         </div>
 
         <div>
-            <label class="mb-1 block text-sm font-medium">Jadwal / Mapel</label>
-            <select name="jadwal_id" class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+            <label class="mb-1 block text-sm font-medium">Jadwal / Mapel (Bisa pilih banyak)</label>
+            {{-- Perhatikan penambahan '[]' pada name dan atribut 'multiple' --}}
+            <select name="jadwal_id[]" id="select-jadwal" multiple="multiple" class="w-full select2 rounded-xl">
                 @foreach($jadwals as $j)
-                    <option value="{{ $j->jadwal_id }}" @selected(old('jadwal_id')==$j->jadwal_id)>
-                        {{ $j->kelas?->nama_kelas }} - {{ $j->hari }} ({{ $j->jam_mulai }}-{{ $j->jam_selesai }}) - {{ $j->mapel?->nama_mapel }} - {{ $j->guru?->nama_guru }}
+                    <option value="{{ $j->jadwal_id }}" {{ (is_array(old('jadwal_id')) && in_array($j->jadwal_id, old('jadwal_id'))) ? 'selected' : '' }}>
+                        [{{ $j->hari }}] {{ $j->mapel?->nama_mapel }} ({{ $j->jam_mulai }}-{{ $j->jam_selesai }})
                     </option>
                 @endforeach
             </select>
@@ -44,7 +60,7 @@
 
         <div>
             <label class="mb-1 block text-sm font-medium">Keterangan</label>
-            <textarea name="keterangan" rows="3"
+            <textarea name="keterangan" rows="3" placeholder="Contoh: Sakit demam, Izin ada keperluan keluarga"
                       class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">{{ old('keterangan') }}</textarea>
             @error('keterangan')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
@@ -56,7 +72,20 @@
             @error('file_bukti')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
 
-        <button class="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">Kirim</button>
+        <button type="submit" class="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 transition-colors uppercase tracking-widest text-xs">
+            <i class="fa-solid fa-paper-plane mr-2"></i> Kirim Surat Izin
+        </button>
     </form>
-@endsection
 
+    {{-- Script Select2 --}}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#select-jadwal').select2({
+                placeholder: " Pilih satu atau lebih mata pelajaran",
+                allowClear: true
+            });
+        });
+    </script>
+@endsection

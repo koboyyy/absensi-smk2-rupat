@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 /* Tambahkan ini untuk Tailwind v4 agar mendukung dark mode berbasis class */
 @custom-variant dark (&:where(.dark, .dark *));

@@ -13,6 +13,10 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $guru = Guru::where('user_id', $user->id)->first();
+        $waliKelas = $guru ? $guru->waliKelas : null;
+        $kelas = $waliKelas ? $waliKelas->kelas : null;
+
 
         $stats = [
             'H' => 0,
@@ -21,7 +25,7 @@ class DashboardController extends Controller
             'A' => 0,
         ];
 
-        if (! $user) {
+        if (!$user) {
             return redirect()->route('login');
         }
 
@@ -39,7 +43,7 @@ class DashboardController extends Controller
             $guruId = Guru::query()->where('user_id', $user->id)->value('guru_id');
             if ($guruId) {
                 $stats = Absensi::query()
-                    ->whereHas('jadwal', fn ($q) => $q->where('guru_id', $guruId))
+                    ->whereHas('jadwal', fn($q) => $q->where('guru_id', $guruId))
                     ->selectRaw('status, COUNT(*) as total')
                     ->groupBy('status')
                     ->pluck('total', 'status')
@@ -52,7 +56,7 @@ class DashboardController extends Controller
             $ortuId = OrangTua::query()->where('user_id', $user->id)->value('ortu_id');
             if ($ortuId) {
                 $stats = Absensi::query()
-                    ->whereHas('siswa', fn ($q) => $q->where('ortu_id', $ortuId))
+                    ->whereHas('siswa', fn($q) => $q->where('ortu_id', $ortuId))
                     ->selectRaw('status, COUNT(*) as total')
                     ->groupBy('status')
                     ->pluck('total', 'status')
@@ -66,7 +70,7 @@ class DashboardController extends Controller
             $kelasId = $guruId ? WaliKelas::query()->where('guru_id', $guruId)->value('kelas_id') : null;
             if ($kelasId) {
                 $stats = Absensi::query()
-                    ->whereHas('siswa', fn ($q) => $q->where('kelas_id', $kelasId))
+                    ->whereHas('siswa', fn($q) => $q->where('kelas_id', $kelasId))
                     ->selectRaw('status, COUNT(*) as total')
                     ->groupBy('status')
                     ->pluck('total', 'status')
@@ -74,9 +78,20 @@ class DashboardController extends Controller
             }
         }
 
+        $unreadSuratCount = 0;
+        if ($user->role === 'guru') {
+            $guruId = \App\Models\Guru::where('user_id', $user->id)->value('guru_id');
+            $unreadSuratCount = \App\Models\SuratIzin::whereHas('jadwal', function ($q) use ($guruId) {
+                $q->where('guru_id', $guruId);
+            })->where('status', 'pending')->count();
+        }
+
+        return view('dashboard', compact('user', 'stats', 'kelas', 'unreadSuratCount'));
+
         return view('dashboard', [
             'user' => $user,
             'stats' => $stats,
+            'kelas' => $kelas
         ]);
     }
 }
