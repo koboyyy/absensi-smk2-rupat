@@ -35,10 +35,10 @@ class AbsensiController extends Controller
 
         $tanggal = $request->query('tanggal', now()->toDateString());
 
-        // Pastikan kolom 'foto' dipanggil (asumsi kolomnya bernama foto)
+        // Mengambil data siswa lengkap dengan kolom 'foto'
         $siswas = Siswa::query()
             ->where('kelas_id', $jadwal->kelas_id)
-            ->select('siswa_id', 'nama_siswa', 'nis', 'foto', 'kelas_id')
+            ->select('siswa_id', 'nama_siswa', 'nis', 'foto', 'kelas_id') // Pastikan 'foto' ada di sini
             ->orderBy('nama_siswa')
             ->get();
 
@@ -60,32 +60,38 @@ class AbsensiController extends Controller
             'tanggal' => ['required', 'date'],
             'status' => ['required', 'array'],
             'status.*' => ['required', 'in:H,I,S,A'],
-            'foto_bukti' => ['nullable', 'image', 'max:2048'], // Validasi image
+            'foto_bukti' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
 
         $tanggal = $data['tanggal'];
 
-        // Ambil data absensi lama jika ingin mengelola file bukti yang sudah ada
+        // 1. Cari absensi yang sudah ada untuk mengambil path foto bukti lama
         $firstAbsensi = Absensi::where('jadwal_id', $jadwal->jadwal_id)
             ->whereDate('tanggal', $tanggal)
             ->first();
 
         $path = $firstAbsensi->foto_bukti ?? null;
 
+        // 2. Jika ada file baru yang diupload
         if ($request->hasFile('foto_bukti')) {
-            // Hapus foto lama jika ada upload baru
-            if ($path) {
+            // Hapus foto lama dari storage jika ada
+            if ($path && Storage::disk('public')->exists($path)) {
                 Storage::disk('public')->delete($path);
             }
+
+            // Simpan foto bukti baru (misal: storage/app/public/absensi_bukti)
             $path = $request->file('foto_bukti')->store('absensi_bukti', 'public');
         }
 
         $kelasSiswaIds = Siswa::where('kelas_id', $jadwal->kelas_id)->pluck('siswa_id')->all();
         $allowed = array_flip($kelasSiswaIds);
 
+        // 3. Simpan data menggunakan Transaksi Database
         DB::transaction(function () use ($data, $jadwal, $tanggal, $path, $allowed) {
             foreach ($data['status'] as $siswaId => $status) {
                 $siswaId = (int) $siswaId;
+
+                // Pastikan hanya siswa yang ada di kelas tersebut yang diproses
                 if (!isset($allowed[$siswaId])) {
                     continue;
                 }
@@ -98,7 +104,7 @@ class AbsensiController extends Controller
                     ],
                     [
                         'status' => $status,
-                        'foto_bukti' => $path,
+                        'foto_bukti' => $path, // Semua siswa di jadwal/tanggal yang sama memiliki foto bukti yang sama
                         'status_kirim' => true,
                     ]
                 );
@@ -107,15 +113,15 @@ class AbsensiController extends Controller
 
         return redirect()
             ->route('guru.absensi.form', ['jadwal' => $jadwal->jadwal_id, 'tanggal' => $tanggal])
-            ->with('success', 'Absensi berhasil diperbarui.');
+            ->with('success', 'Absensi dan bukti KBM berhasil disimpan.');
     }
 
+    // Method rekapJadwal dan exportPdf tetap sama seperti sebelumnya...
     public function rekapJadwal(Request $request, Jadwal $jadwal)
     {
         $guruId = Guru::query()->where('user_id', Auth::id())->value('guru_id');
         abort_unless($jadwal->guru_id === $guruId, 403);
 
-        // Ambil input bulan dan tahun, default ke bulan/tahun sekarang
         $bulan = $request->query('bulan', date('m'));
         $tahun = $request->query('tahun', date('Y'));
 
@@ -124,7 +130,6 @@ class AbsensiController extends Controller
             ->orderBy('nama_siswa')
             ->get();
 
-        // Query rekap dengan filter bulan dan tahun
         $rekap = Absensi::query()
             ->where('jadwal_id', $jadwal->jadwal_id)
             ->whereMonth('tanggal', $bulan)
@@ -169,7 +174,6 @@ class AbsensiController extends Controller
 
         $pdf = Pdf::loadView('guru.absensi.rekap_pdf', compact('jadwal', 'siswas', 'rekap', 'bulan', 'tahun'));
 
-        // Memberikan nama file yang rapi
         $fileName = 'Rekap_Absen_' . str_replace(' ', '_', $jadwal->mapel->nama_mapel) . '_' . $bulan . '_' . $tahun . '.pdf';
         return $pdf->download($fileName);
     }

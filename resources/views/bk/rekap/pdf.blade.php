@@ -2,74 +2,97 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>Rekap BK (S/I/A)</title>
+    <title>Rekap Absen Siswa - SMKN 2 Rupat</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; }
-        h2 { margin: 0 0 8px 0; }
-        .meta { margin: 0 0 10px 0; color: #444; font-size: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-        th, td { border: 1px solid #ddd; padding: 6px; }
-        th { background: #f3f4f6; text-align: left; }
-        .cards { width: 100%; margin-top: 8px; }
-        .cards td { border: 0; padding: 0; }
-        .card { border: 1px solid #ddd; padding: 8px; border-radius: 6px; }
-        .card-title { font-size: 10px; color: #555; }
-        .card-value { font-size: 16px; font-weight: 700; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; line-height: 1.4; color: #333; }
+        .text-center { text-align: center; }
+        .text-bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
+        
+        h2 { margin: 0; padding: 0; text-align: center; font-size: 14px; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 5px; }
+        
+        .meta { margin-bottom: 10px; width: 100%; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table.data th, table.data td { border: 1px solid #000; padding: 5px; }
+        table.data th { background: #f2f2f2; }
+        
+        /* Footer Tanda Tangan */
+        .footer-table { margin-top: 30px; border: none; }
+        .footer-table td { border: none !important; width: 50%; vertical-align: top; }
+        .signature-space { height: 60px; }
     </style>
 </head>
 <body>
-    <h2>Rekap BK (S/I/A) - SMKN 2 Rupat</h2>
+
+    <div class="header">
+        <h2 class="uppercase">REKAP ABSEN SISWA KELAS {{ $namaKelas ?? 'XI C' }}</h2>
+        <h2 class="uppercase">SMKN 2 RUPAT</h2>
+    </div>
+
     <div class="meta">
         Periode: {{ str_pad((string)$bulan, 2, '0', STR_PAD_LEFT) }}/{{ $tahun }}
         @if($jurusan) • Jurusan: {{ $jurusan }} @endif
-        @if($kelasId) • Kelas ID: {{ $kelasId }} @endif
     </div>
 
-    <table class="cards">
-        <tr>
-            <td style="width:33%; padding-right:6px;">
-                <div class="card">
-                    <div class="card-title">Sakit</div>
-                    <div class="card-value">{{ $summary['S'] }}</div>
-                </div>
-            </td>
-            <td style="width:33%; padding:0 6px;">
-                <div class="card">
-                    <div class="card-title">Izin</div>
-                    <div class="card-value">{{ $summary['I'] }}</div>
-                </div>
-            </td>
-            <td style="width:33%; padding-left:6px;">
-                <div class="card">
-                    <div class="card-title">Alfa</div>
-                    <div class="card-value">{{ $summary['A'] }}</div>
-                </div>
-            </td>
-        </tr>
-    </table>
-
-    <table>
+    <table class="data">
         <thead>
-        <tr>
-            <th>Jurusan</th>
-            <th>Kelas</th>
-            <th>Sakit</th>
-            <th>Izin</th>
-            <th>Alfa</th>
-        </tr>
+            <tr>
+                <th rowspan="2" style="width: 30px;" class="text-center">NO</th>
+                <th rowspan="2">NAMA</th>
+                <th rowspan="2" style="width: 40px;" class="text-center">L/P</th>
+                <th colspan="3" class="text-center">TOTAL ABSENSI DALAM 1 BULAN</th>
+            </tr>
+            <tr>
+                <th style="width: 60px;" class="text-center">SAKIT</th>
+                <th style="width: 60px;" class="text-center">ALFA</th>
+                <th style="width: 60px;" class="text-center">IZIN</th>
+            </tr>
         </thead>
         <tbody>
-        @foreach($perKelas as $r)
-            <tr>
-                <td>{{ $r->jurusan }}</td>
-                <td>{{ $r->nama_kelas }}</td>
-                <td>{{ $r->sakit }}</td>
-                <td>{{ $r->izin }}</td>
-                <td>{{ $r->alfa }}</td>
-            </tr>
-        @endforeach
+            @foreach($perKelas as $index => $r)
+                <tr>
+                    <td class="text-center">{{ $index + 1 }}</td>
+                    <td>{{ $r->nama_siswa }}</td>
+                    <td class="text-center">{{ $r->jenis_kelamin }}</td>
+                    <td class="text-center">{{ $r->sakit ?? 0 }}</td>
+                    <td class="text-center" style="{{ ($r->alfa ?? 0) > 0 ? 'background-color: #ffcccc; color: red; font-weight: bold;' : '' }}">
+                        {{ $r->alfa ?? 0 }}
+                    </td>
+                    <td class="text-center">{{ $r->izin ?? 0 }}</td>
+                </tr>
+            @endforeach
         </tbody>
+        <tfoot>
+            <tr class="text-bold">
+                <td colspan="3" class="text-center">JUMLAH TOTAL</td>
+                <td class="text-center">{{ $summary['S'] }}</td>
+                <td class="text-center">{{ $summary['A'] }}</td>
+                <td class="text-center">{{ $summary['I'] }}</td>
+            </tr>
+        </tfoot>
     </table>
+
+    {{-- Bagian Tanda Tangan sesuai Gambar --}}
+    <table class="footer-table">
+        <tr>
+            <td class="text-center">
+                Mengetahui,<br>
+                Kepala SMK Negeri 2 Rupat<br>
+                <div class="signature-space"></div>
+                <span class="text-bold" style="text-decoration: underline;">Fitria, S.Pd., M.M.</span><br>
+                NIP. 197809292005012005
+            </td>
+            <td class="text-center">
+                Rupat, {{ now()->format('d F Y') }}<br>
+                Guru Bimbingan Konseling<br>
+                <div class="signature-space"></div>
+                <span class="text-bold" style="text-decoration: underline;">Nur Hefni Ebri, S.Pd.</span><br>
+                NIP. .............................
+            </td>
+        </tr>
+    </table>
+
 </body>
 </html>
-

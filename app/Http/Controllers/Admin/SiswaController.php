@@ -8,6 +8,7 @@ use App\Models\OrangTua;
 use App\Models\Siswa;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage; // Tambahkan ini
 
 class SiswaController extends Controller
 {
@@ -37,6 +38,9 @@ class SiswaController extends Controller
     /**
      * Store a newly created resource in storage.
      */
+    /**
+     * Store a newly created resource in storage.
+     */
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -46,8 +50,23 @@ class SiswaController extends Controller
             'alamat' => ['nullable', 'string'],
             'kelas_id' => ['required', 'exists:kelas,kelas_id'],
             'ortu_id' => ['required', 'exists:orang_tuas,ortu_id'],
-            'foto' => ['nullable', 'string', 'max:255'],
+            'foto' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
+
+        if ($request->hasFile('foto')) {
+            $file = $request->file('foto');
+            $filename = time() . '_' . $request->nis . '.' . $file->getClientOriginalExtension();
+
+            // Gunakan disk 'public' secara eksplisit
+            $path = $file->storeAs('siswa', $filename, 'public');
+
+            // Cek fisik file di path: storage/app/public/siswa/file.jpg
+            if (!Storage::disk('public')->exists('siswa/' . $filename)) {
+                return back()->withInput()->withErrors(['foto' => 'Sistem Ubuntu menolak menulis file. Jalankan sudo chmod -R 775 storage.']);
+            }
+
+            $data['foto'] = $filename;
+        }
 
         Siswa::create($data);
 
@@ -55,11 +74,39 @@ class SiswaController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Update the specified resource in storage.
      */
-    public function show(string $id)
+    public function update(Request $request, string $id)
     {
-        return redirect()->route('admin.siswa.edit', $id);
+        $item = Siswa::query()->findOrFail($id);
+        $data = $request->validate([
+            'nis' => ['required', 'string', 'max:50', 'unique:siswas,nis,' . $item->siswa_id . ',siswa_id'],
+            'nama_siswa' => ['required', 'string', 'max:255'],
+            'jenis_kelamin' => ['required', 'in:L,P'],
+            'alamat' => ['nullable', 'string'],
+            'kelas_id' => ['required', 'exists:kelas,kelas_id'],
+            'ortu_id' => ['nullable', 'exists:orang_tuas,ortu_id'],
+            'foto' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+        ]);
+
+        if ($request->hasFile('foto')) {
+            $file = $request->file('foto');
+            $filename = time() . '_' . $request->nis . '.' . $file->getClientOriginalExtension();
+
+            // Gunakan disk 'public' secara eksplisit
+            $path = $file->storeAs('siswa', $filename, 'public');
+
+            // Cek fisik file di path: storage/app/public/siswa/file.jpg
+            if (!Storage::disk('public')->exists('siswa/' . $filename)) {
+                return back()->withInput()->withErrors(['foto' => 'Sistem Ubuntu menolak menulis file. Jalankan sudo chmod -R 775 storage.']);
+            }
+
+            $data['foto'] = $filename;
+        }
+
+        $item->update($data);
+
+        return redirect()->route('admin.siswa.index')->with('success', 'Data siswa berhasil diperbarui.');
     }
 
     /**
@@ -76,23 +123,7 @@ class SiswaController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
-    {
-        $item = Siswa::query()->findOrFail($id);
-        $data = $request->validate([
-            'nis' => ['required', 'string', 'max:50', 'unique:siswas,nis,' . $item->siswa_id . ',siswa_id'],
-            'nama_siswa' => ['required', 'string', 'max:255'],
-            'jenis_kelamin' => ['required', 'in:L,P'],
-            'alamat' => ['nullable', 'string'],
-            'kelas_id' => ['required', 'exists:kelas,kelas_id'],
-            'ortu_id' => ['nullable', 'exists:orang_tuas,ortu_id'],
-            'foto' => ['nullable', 'string', 'max:255'],
-        ]);
 
-        $item->update($data);
-
-        return redirect()->route('admin.siswa.index')->with('success', 'Data siswa berhasil diperbarui.');
-    }
 
     /**
      * Remove the specified resource from storage.
@@ -100,9 +131,20 @@ class SiswaController extends Controller
     public function destroy(string $id)
     {
         $item = Siswa::query()->findOrFail($id);
+
+        // Hapus file foto dari storage saat data dihapus
+        if ($item->foto) {
+            Storage::delete('public/siswa/' . $item->foto);
+        }
+
         $item->delete();
 
         return redirect()->route('admin.siswa.index')->with('success', 'Data siswa berhasil dihapus.');
+    }
+
+    public function show(string $id)
+    {
+        return redirect()->route('admin.siswa.edit', $id);
     }
 
     public function exportPdf()

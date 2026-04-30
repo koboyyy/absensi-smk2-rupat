@@ -6,7 +6,7 @@
         <a href="{{ route('admin.siswa.index') }}" class="rounded-lg px-3 py-2 text-sm font-semibold hover:bg-slate-100 dark:hover:bg-slate-900">Kembali</a>
     </div>
 
-    <form method="POST" action="{{ route('admin.siswa.store') }}"
+    <form method="POST" action="{{ route('admin.siswa.store') }}" enctype="multipart/form-data"
           class="max-w-2xl space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
         @csrf
 
@@ -60,12 +60,28 @@
         </div>
 
         <div>
-            <label class="mb-1 block text-sm font-medium">Foto (path/filename opsional)</label>
-            <input name="foto" value="{{ old('foto') }}" class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+            <label class="mb-1 block text-sm font-medium">Foto Siswa</label>
+            <div class="flex flex-col items-center gap-4 md:flex-row">
+                <div id="preview-container" class="hidden">
+                    <img id="image-preview" src="#" alt="Preview" class="h-24 w-24 rounded-lg object-cover border border-slate-200 dark:border-slate-800">
+                </div>
+                <input type="file" name="foto" id="foto-input" accept="image/*"
+                    class="w-full rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800 dark:bg-slate-950 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-slate-900 dark:file:text-blue-400">
+            </div>
+            <p class="mt-1 text-xs text-slate-500 italic">*Format: JPG, PNG, JPEG. Maksimal 2MB.</p>
             @error('foto')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
         </div>
 
-        <button class="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">Simpan</button>
+        <button class="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700">Simpan Data Siswa</button>
     </form>
-@endsection
 
+    <script>
+        document.getElementById('foto-input').onchange = evt => {
+            const [file] = document.getElementById('foto-input').files
+            if (file) {
+                document.getElementById('preview-container').classList.remove('hidden')
+                document.getElementById('image-preview').src = URL.createObjectURL(file)
+            }
+        }
+    </script>
+@endsection

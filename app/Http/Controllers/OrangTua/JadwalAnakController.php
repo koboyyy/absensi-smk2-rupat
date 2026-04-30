@@ -24,7 +24,6 @@ class JadwalAnakController extends Controller
             ]);
         }
 
-        // Nama relasi diubah dari 'absensi' menjadi 'absensis' sesuai Model Jadwal
         $items = Jadwal::with(['mapel', 'guru'])
             ->where('kelas_id', $siswa->kelas_id)
             ->withCount([
@@ -43,7 +42,7 @@ class JadwalAnakController extends Controller
             ])
             ->orderByRaw("FIELD(hari, 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu')")
             ->orderBy('jam_mulai')
-            ->paginate(10);
+            ->paginate(10); // Sudah menggunakan paginate
 
         return view('ortu.jadwal.index', compact('items', 'siswa'));
     }
@@ -61,11 +60,12 @@ class JadwalAnakController extends Controller
             abort(403, 'Anda tidak memiliki akses ke jadwal ini.');
         }
 
-        // Di sini variabel $absensi didefinisikan untuk halaman detail
+        // MODIFIKASI: Menggunakan paginate(10) untuk detail absensi
         $absensi = Absensi::where('jadwal_id', $id)
             ->where('siswa_id', $siswa->siswa_id)
             ->orderBy('tanggal', 'desc')
-            ->get();
+            ->paginate(10) // Menampilkan 10 riwayat per halaman
+            ->withQueryString(); // Mempertahankan parameter URL saat berpindah halaman
 
         return view('ortu.jadwal.detail', compact('jadwal', 'siswa', 'absensi'));
     }

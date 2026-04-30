@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProfileController; // Tambahkan ini
 use App\Http\Controllers\Admin\GuruController;
 use App\Http\Controllers\Admin\JadwalController;
 use App\Http\Controllers\Admin\KelasController;
@@ -25,11 +26,17 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
-// GRUP UTAMA: Hanya gunakan 'auth' agar semua yang login bisa masuk Dashboard
+// GRUP UTAMA: Hanya gunakan 'auth' agar semua yang login bisa masuk Dashboard & Profil
 Route::middleware(['auth'])->group(function () {
 
-    // Dashboard bisa diakses semua role yang terverifikasi di auth
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // --- RUTE PROFIL (Baru ditambahkan agar ikon profil berfungsi) ---
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // -----------------------------------------------------------------
 
     // GRUP ADMIN
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
@@ -59,27 +66,21 @@ Route::middleware(['auth'])->group(function () {
         Route::get('absensi', [AbsensiController::class, 'index'])->name('absensi.index');
         Route::get('absensi/jadwal/{jadwal}', [AbsensiController::class, 'showForm'])->name('absensi.form');
         Route::post('absensi/jadwal/{jadwal}', [AbsensiController::class, 'store'])->name('absensi.store');
-
-        // RUTE BARU UNTUK REKAP
         Route::get('rekap-kehadiran', [RekapKehadiranController::class, 'index'])->name('rekap-kehadiran.index');
-
         Route::get('surat-izin', [SuratIzinInboxController::class, 'index'])->name('surat-izin.index');
         Route::get('surat-izin/{suratIzin}', [SuratIzinInboxController::class, 'show'])->name('surat-izin.show');
         Route::post('surat-izin/{suratIzin}/terima', [SuratIzinInboxController::class, 'accept'])->name('surat-izin.accept');
         Route::post('surat-izin/{suratIzin}/tolak', [SuratIzinInboxController::class, 'reject'])->name('surat-izin.reject');
-
         Route::get('rekap-kehadiran/pdf', [RekapKehadiranController::class, 'exportPdf'])->name('rekap-kehadiran.pdf');
         Route::get('absensi/rekap/{jadwal}', [AbsensiController::class, 'rekapJadwal'])->name('absensi.rekap-jadwal');
         Route::get('absensi/rekap/{jadwal}/pdf', [AbsensiController::class, 'exportPdf'])->name('absensi.rekap-pdf');
     });
 
-    // GRUP WALI KELAS - Sekarang bersih tanpa nesting middleware 'role' yang sama
+    // GRUP WALI KELAS
     Route::prefix('wali-kelas')->name('wali.')->middleware('role:wali_kelas')->group(function () {
         Route::get('validasi', [ValidasiAbsensiController::class, 'index'])->name('validasi.index');
         Route::post('validasi', [ValidasiAbsensiController::class, 'validateBatch'])->name('validasi.batch');
         Route::get('rekap', [ValidasiAbsensiController::class, 'rekap'])->name('rekap.index');
-
-        // Rute Baru
         Route::get('rekap/pdf', [ValidasiAbsensiController::class, 'exportPdf'])->name('rekap.pdf');
     });
 

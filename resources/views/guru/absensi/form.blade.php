@@ -66,7 +66,7 @@
                     <div class="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-100 bg-slate-100 dark:border-slate-800 dark:bg-slate-900 flex items-center justify-center text-slate-400">
                         @if($s->foto)
                             {{-- Jika ada foto, tampilkan (Asumsi foto disimpan di storage/public) --}}
-                            <img src="{{ asset('storage/' . $s->foto) }}" alt="{{ $s->nama_siswa }}" class="h-full w-full object-cover">
+                            <img src="{{ asset('storage/siswa/' . $s->foto) }}" alt="{{ $s->nama_siswa }}" class="h-full w-full object-cover">
                         @else
                             {{-- Jika tidak ada foto, tampilkan Icon Placeholder (fa-solid fa-user) --}}
                             <i class="fa-solid fa-user text-sm"></i>
