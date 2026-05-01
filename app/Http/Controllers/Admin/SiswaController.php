@@ -8,7 +8,7 @@ use App\Models\OrangTua;
 use App\Models\Siswa;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage; // Tambahkan ini
+use Illuminate\Support\Facades\Storage;
 
 class SiswaController extends Controller
 {
@@ -17,6 +17,7 @@ class SiswaController extends Controller
      */
     public function index()
     {
+        // Tambahkan relasi 'jurusan' jika kelas memilikinya, agar query lebih efisien
         $items = Siswa::query()
             ->with(['kelas', 'orangTua'])
             ->orderBy('nis')
@@ -30,14 +31,12 @@ class SiswaController extends Controller
      */
     public function create()
     {
-        $kelas = Kelas::query()->orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
+        // Mengambil data pendukung untuk form tambah
+        $kelas = Kelas::query()->orderBy('tingkat')->orderBy('nama_kelas')->get();
         $ortu = OrangTua::query()->orderBy('nama_ortu')->get();
         return view('admin.siswa.create', compact('kelas', 'ortu'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     /**
      * Store a newly created resource in storage.
      */
@@ -57,12 +56,12 @@ class SiswaController extends Controller
             $file = $request->file('foto');
             $filename = time() . '_' . $request->nis . '.' . $file->getClientOriginalExtension();
 
-            // Gunakan disk 'public' secara eksplisit
-            $path = $file->storeAs('siswa', $filename, 'public');
+            // Simpan ke storage/app/public/siswa
+            $file->storeAs('siswa', $filename, 'public');
 
-            // Cek fisik file di path: storage/app/public/siswa/file.jpg
+            // Cek permission folder
             if (!Storage::disk('public')->exists('siswa/' . $filename)) {
-                return back()->withInput()->withErrors(['foto' => 'Sistem Ubuntu menolak menulis file. Jalankan sudo chmod -R 775 storage.']);
+                return back()->withInput()->withErrors(['foto' => 'Gagal menulis file. Pastikan folder storage memiliki izin akses (chmod).']);
             }
 
             $data['foto'] = $filename;
@@ -74,11 +73,23 @@ class SiswaController extends Controller
     }
 
     /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        $item = Siswa::query()->findOrFail($id);
+        $kelas = Kelas::query()->orderBy('tingkat')->orderBy('nama_kelas')->get();
+        $ortu = OrangTua::query()->orderBy('nama_ortu')->get();
+        return view('admin.siswa.edit', compact('item', 'kelas', 'ortu'));
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
     {
         $item = Siswa::query()->findOrFail($id);
+
         $data = $request->validate([
             'nis' => ['required', 'string', 'max:50', 'unique:siswas,nis,' . $item->siswa_id . ',siswa_id'],
             'nama_siswa' => ['required', 'string', 'max:255'],
@@ -90,16 +101,14 @@ class SiswaController extends Controller
         ]);
 
         if ($request->hasFile('foto')) {
+            // Hapus foto lama jika ada
+            if ($item->foto) {
+                Storage::disk('public')->delete('siswa/' . $item->foto);
+            }
+
             $file = $request->file('foto');
             $filename = time() . '_' . $request->nis . '.' . $file->getClientOriginalExtension();
-
-            // Gunakan disk 'public' secara eksplisit
-            $path = $file->storeAs('siswa', $filename, 'public');
-
-            // Cek fisik file di path: storage/app/public/siswa/file.jpg
-            if (!Storage::disk('public')->exists('siswa/' . $filename)) {
-                return back()->withInput()->withErrors(['foto' => 'Sistem Ubuntu menolak menulis file. Jalankan sudo chmod -R 775 storage.']);
-            }
+            $file->storeAs('siswa', $filename, 'public');
 
             $data['foto'] = $filename;
         }
@@ -110,31 +119,14 @@ class SiswaController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        $item = Siswa::query()->findOrFail($id);
-        $kelas = Kelas::query()->orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
-        $ortu = OrangTua::query()->orderBy('nama_ortu')->get();
-        return view('admin.siswa.edit', compact('item', 'kelas', 'ortu'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-
-
-    /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
     {
         $item = Siswa::query()->findOrFail($id);
 
-        // Hapus file foto dari storage saat data dihapus
         if ($item->foto) {
-            Storage::delete('public/siswa/' . $item->foto);
+            Storage::disk('public')->delete('siswa/' . $item->foto);
         }
 
         $item->delete();
@@ -149,8 +141,9 @@ class SiswaController extends Controller
 
     public function exportPdf()
     {
+        // Pastikan relasi juga dimuat di PDF
         $items = Siswa::query()->with(['kelas', 'orangTua'])->orderBy('nis')->get();
         $pdf = Pdf::loadView('admin.siswa.pdf', compact('items'))->setPaper('a4', 'landscape');
-        return $pdf->download('siswa.pdf');
+        return $pdf->download('siswa-smkn2-rupat.pdf');
     }
 }

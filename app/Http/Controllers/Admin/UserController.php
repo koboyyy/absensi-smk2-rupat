@@ -32,6 +32,21 @@ class UserController extends Controller
         return view('admin.users.create', compact('roles', 'kelas'));
     }
 
+    public function edit(string $id)
+    {
+        $item = User::query()->findOrFail($id);
+        $kelas = Kelas::all();
+        $roles = ['admin', 'guru', 'wali_kelas', 'kepala_sekolah', 'orang_tua', 'guru_bk'];
+
+        // Ambil kelas_id jika user ini adalah wali kelas untuk ditampilkan di form
+        if ($item->role === 'wali_kelas' && $item->guru) {
+            $currentWali = WaliKelas::where('guru_id', $item->guru->guru_id)->first();
+            $item->kelas_id = $currentWali ? $currentWali->kelas_id : null;
+        }
+
+        return view('admin.users.edit', compact('item', 'roles', 'kelas'));
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -39,11 +54,12 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:6'],
             'role' => ['required', 'in:admin,guru,wali_kelas,kepala_sekolah,orang_tua,guru_bk'],
             'status' => ['required', 'in:aktif,nonaktif'],
+            // Tambahkan NIP ke validasi: wajib diisi untuk Kepsek, BK, dan Wali Kelas
+            'nip' => ['required_if:role,kepala_sekolah,guru_bk,wali_kelas', 'nullable', 'string', 'max:50'],
+            'kelas_id' => ['required_if:role,wali_kelas', 'nullable', 'exists:kelas,kelas_id'],
             'nama' => ['nullable', 'string', 'max:255'],
             'no_hp' => ['nullable', 'string', 'max:30'],
             'alamat' => ['nullable', 'string'],
-            // Validasi: Wajib diisi jika role adalah wali_kelas
-            'kelas_id' => ['required_if:role,wali_kelas', 'nullable', 'exists:kelas,kelas_id'],
         ]);
 
         DB::transaction(function () use ($data) {
@@ -55,12 +71,12 @@ class UserController extends Controller
                 'status' => $data['status'],
             ]);
 
-            // 2. Buat data profil profil
+            // 2. Buat data profil
             if (in_array($data['role'], ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
                 $guru = Guru::create([
                     'user_id' => $user->id,
                     'nama_guru' => $data['nama'] ?? $data['username'],
-                    'nip' => null,
+                    'nip' => $data['nip'] ?? null, // Simpan NIP di sini
                     'jenis_kelamin' => 'L',
                     'no_hp' => $data['no_hp'] ?? null,
                     'alamat' => $data['alamat'] ?? null,
@@ -69,7 +85,7 @@ class UserController extends Controller
                 // 3. Jika role wali_kelas, hubungkan ke tabel wali_kelas
                 if ($data['role'] === 'wali_kelas' && !empty($data['kelas_id'])) {
                     WaliKelas::updateOrCreate(
-                        ['kelas_id' => $data['kelas_id']], // Mencegah 1 kelas punya 2 wali
+                        ['kelas_id' => $data['kelas_id']],
                         ['guru_id' => $guru->guru_id]
                     );
                 }
@@ -86,21 +102,6 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'Akun berhasil dibuat.');
     }
 
-    public function edit(string $id)
-    {
-        $item = User::query()->findOrFail($id);
-        $kelas = Kelas::all();
-        $roles = ['admin', 'guru', 'wali_kelas', 'kepala_sekolah', 'orang_tua', 'guru_bk'];
-
-        // Ambil kelas_id jika user ini adalah wali kelas untuk ditampilkan di form
-        if ($item->role === 'wali_kelas' && $item->guru) {
-            $currentWali = WaliKelas::where('guru_id', $item->guru->guru_id)->first();
-            $item->kelas_id = $currentWali ? $currentWali->kelas_id : null;
-        }
-
-        return view('admin.users.edit', compact('item', 'roles', 'kelas'));
-    }
-
     public function update(Request $request, string $id)
     {
         $item = User::query()->findOrFail($id);
@@ -109,6 +110,7 @@ class UserController extends Controller
             'password' => ['nullable', 'string', 'min:6'],
             'role' => ['required', 'in:admin,guru,wali_kelas,kepala_sekolah,orang_tua,guru_bk'],
             'status' => ['required', 'in:aktif,nonaktif'],
+            'nip' => ['required_if:role,kepala_sekolah,guru_bk,wali_kelas', 'nullable', 'string', 'max:50'],
             'kelas_id' => ['required_if:role,wali_kelas', 'nullable', 'exists:kelas,kelas_id'],
         ]);
 
@@ -131,21 +133,24 @@ class UserController extends Controller
                 $this->handleRoleSwitch($item, $oldRole, $data['role']);
             }
 
-            // 3. Update/Sinkronisasi Data Wali Kelas
+            // 3. Update NIP di tabel Guru (jika rolenya masuk kelompok guru)
+            if (in_array($data['role'], ['guru', 'wali_kelas', 'kepala_sekolah', 'guru_bk'])) {
+                Guru::where('user_id', $item->id)->update([
+                    'nip' => $data['nip'] ?? null
+                ]);
+            }
+
+            // 4. Update data Wali Kelas
             if ($data['role'] === 'wali_kelas') {
                 $guru = Guru::where('user_id', $item->id)->first();
                 if ($guru) {
-                    // Hapus penugasan wali kelas lama untuk guru ini (jika ada)
                     WaliKelas::where('guru_id', $guru->guru_id)->delete();
-
-                    // Buat penugasan baru
                     WaliKelas::updateOrCreate(
                         ['kelas_id' => $data['kelas_id']],
                         ['guru_id' => $guru->guru_id]
                     );
                 }
             } else {
-                // Jika ganti dari wali_kelas ke role lain, hapus data di tabel WaliKelas
                 $guru = Guru::where('user_id', $item->id)->first();
                 if ($guru) {
                     WaliKelas::where('guru_id', $guru->guru_id)->delete();
@@ -205,10 +210,10 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'Akun berhasil dihapus.');
     }
 
-    public function exportPdf()
-    {
-        $items = User::query()->orderBy('role')->orderBy('username')->get();
-        $pdf = Pdf::loadView('admin.users.pdf', compact('items'))->setPaper('a4', 'portrait');
-        return $pdf->download('users.pdf');
-    }
+    // public function exportPdf()
+    // {
+    //     $items = User::query()->orderBy('role')->orderBy('username')->get();
+    //     $pdf = Pdf::loadView('admin.users.pdf', compact('items'))->setPaper('a4', 'portrait');
+    //     return $pdf->download('users.pdf');
+    // }
 }

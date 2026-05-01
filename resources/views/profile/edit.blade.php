@@ -21,7 +21,7 @@
                     {{ $user->guru ? $user->guru->nama : $user->username }}
                 </h2>
                 <p class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 inline-block mt-1">
-                    {{ strtoupper($user->role) }}
+                    {{ Str::replace('_', ' ', strtoupper($user->role)) }}
                 </p>
                 <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <p class="text-xs text-slate-500 italic">Status Akun: 

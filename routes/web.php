@@ -40,7 +40,7 @@ Route::middleware(['auth'])->group(function () {
 
     // GRUP ADMIN
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
-        Route::get('users/export/pdf', [UserController::class, 'exportPdf'])->name('users.export.pdf');
+        // Route::get('users/export/pdf', [UserController::class, 'exportPdf'])->name('users.export.pdf');
         Route::get('guru/export/pdf', [GuruController::class, 'exportPdf'])->name('guru.export.pdf');
         Route::get('kelas/export/pdf', [KelasController::class, 'exportPdf'])->name('kelas.export.pdf');
         Route::get('mapel/export/pdf', [MapelController::class, 'exportPdf'])->name('mapel.export.pdf');

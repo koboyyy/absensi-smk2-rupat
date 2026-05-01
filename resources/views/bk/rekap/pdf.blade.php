@@ -8,32 +8,73 @@
         .text-center { text-align: center; }
         .text-bold { font-weight: bold; }
         .uppercase { text-transform: uppercase; }
-        
-        h2 { margin: 0; padding: 0; text-align: center; font-size: 14px; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 5px; }
-        
+
         .meta { margin-bottom: 10px; width: 100%; }
-        
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         table.data th, table.data td { border: 1px solid #000; padding: 5px; }
         table.data th { background: #f2f2f2; }
-        
+
         /* Footer Tanda Tangan */
         .footer-table { margin-top: 30px; border: none; }
         .footer-table td { border: none !important; width: 50%; vertical-align: top; }
         .signature-space { height: 60px; }
+
+        /* === KOP SURAT (sama dengan rekap wali) === */
+        .header-container {
+            width: 100%;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+        .logo-container {
+            float: left;
+            width: 130px;
+        }
+        .logo-container img {
+            width: 100%;
+            height: auto;
+        }
+        .header-text {
+            text-align: center;
+            margin-right: 70px;
+        }
+        .header-text h2 { margin: 0; font-size: 14px; text-transform: uppercase; }
+        .header-text h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
+        .header-text p { margin: 2px 0; font-size: 10px; }
+        .header-container::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h2 class="uppercase">REKAP ABSEN SISWA KELAS {{ $namaKelas ?? 'XI C' }}</h2>
-        <h2 class="uppercase">SMKN 2 RUPAT</h2>
+    {{-- KOP SURAT --}}
+    <div class="header-container">
+        <div class="logo-container">
+            @php
+                $path = public_path('images/logo-smkn-2-rupat.png');
+                $type = pathinfo($path, PATHINFO_EXTENSION);
+                $data = file_get_contents($path);
+                $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
+            @endphp
+            <img src="{{ $base64 }}" alt="Logo">
+        </div>
+        <div class="header-text">
+            <h2>PEMERINTAH PROVINSI RIAU</h2>
+            <p>DINAS PENDIDIKAN</p>
+            <h1>SMK NEGERI 2 RUPAT</h1>
+            <p>Alamat: Jl. Pangkalan Pinang, Kec. Rupat, Kab. Bengkalis</p>
+            <p><strong>REKAP ABSEN SISWA KELAS {{ $namaKelas ?? 'XI C' }}</strong></p>
+            <p>TAHUN PELAJARAN 2025/2026</p>
+        </div>
     </div>
 
     <div class="meta">
         Periode: {{ str_pad((string)$bulan, 2, '0', STR_PAD_LEFT) }}/{{ $tahun }}
-        @if($jurusan) • Jurusan: {{ $jurusan }} @endif
+        @if($jurusan) &bull; Jurusan: {{ $jurusan }} @endif
     </div>
 
     <table class="data">
@@ -74,7 +115,7 @@
         </tfoot>
     </table>
 
-    {{-- Bagian Tanda Tangan sesuai Gambar --}}
+    {{-- Bagian Tanda Tangan --}}
     <table class="footer-table">
         <tr>
             <td class="text-center">
@@ -85,7 +126,7 @@
                 NIP. 197809292005012005
             </td>
             <td class="text-center">
-                Rupat, {{ now()->format('d F Y') }}<br>
+                Pangkalan Pinang, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br>
                 Guru Bimbingan Konseling<br>
                 <div class="signature-space"></div>
                 <span class="text-bold" style="text-decoration: underline;">Nur Hefni Ebri, S.Pd.</span><br>

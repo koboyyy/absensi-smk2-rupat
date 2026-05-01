@@ -68,16 +68,23 @@ class ValidasiAbsensiController extends Controller
 
     public function rekap(Request $request)
     {
-        $guruId = Guru::query()->where('user_id', Auth::id())->value('guru_id');
-        $kelasId = WaliKelas::query()->where('guru_id', $guruId)->value('kelas_id');
-        abort_unless((bool) $kelasId, 403);
+        $user = Auth::user();
+        $guru = $user->guru;
+        $waliKelas = $guru ? $guru->waliKelas : null;
+        $kelas = $waliKelas ? $waliKelas->kelas : null;
 
+        if (!$kelas) {
+            abort(403, "Anda bukan wali kelas.");
+        }
+
+        $kelasId = $kelas->kelas_id;
         $bulan = (int) $request->query('bulan', now()->month);
         $tahun = (int) $request->query('tahun', now()->year);
 
         $from = now()->setDate($tahun, $bulan, 1)->startOfMonth()->toDateString();
         $to = now()->setDate($tahun, $bulan, 1)->endOfMonth()->toDateString();
 
+        // 1. Ambil Statistik Global Kelas (untuk Stats Cards)
         $rows = Absensi::query()
             ->whereBetween('tanggal', [$from, $to])
             ->whereHas('siswa', fn($q) => $q->where('kelas_id', $kelasId))
@@ -93,15 +100,37 @@ class ValidasiAbsensiController extends Controller
             'alfa' => (int) ($rows['A'] ?? 0),
         ];
 
-        // simpan/refresh rekap_kelas
+        // 2. Ambil Statistik Per Siswa (untuk Tabel Individu)
+        $siswas = $kelas->siswas()->orderBy('nama_siswa')->get();
+        $totalPerSiswa = [];
+
+        foreach ($siswas as $siswa) {
+            // Hitung statistik absensi siswa tersebut dalam rentang bulan yang dipilih
+            $absensiSiswa = Absensi::query()
+                ->where('siswa_id', $siswa->siswa_id)
+                ->whereBetween('tanggal', [$from, $to])
+                ->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status')
+                ->toArray();
+
+            $totalPerSiswa[$siswa->siswa_id] = [
+                'H' => $absensiSiswa['H'] ?? 0,
+                'S' => $absensiSiswa['S'] ?? 0,
+                'I' => $absensiSiswa['I'] ?? 0,
+                'A' => $absensiSiswa['A'] ?? 0,
+            ];
+        }
+
+        // simpan/refresh rekap_kelas (History untuk admin)
         RekapKelas::query()->updateOrCreate(
             ['kelas_id' => $kelasId, 'bulan' => $bulan, 'tahun' => $tahun],
             $rekap
         );
 
-        return view('wali.rekap.index', compact('bulan', 'tahun', 'rekap'));
+        // Kirim $totalPerSiswa ke View
+        return view('wali.rekap.index', compact('bulan', 'tahun', 'rekap', 'kelas', 'totalPerSiswa'));
     }
-
     public function exportPdf(Request $request)
     {
         $bulan = $request->get('bulan', date('m'));

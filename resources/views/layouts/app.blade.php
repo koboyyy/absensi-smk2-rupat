@@ -127,7 +127,7 @@
                             {{ auth()->user()->username }}
                         </div>
                         <div class="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                            {{ strtoupper(auth()->user()->role) }}
+                            {{ Str::replace('_', ' ', strtoupper(auth()->user()->role)) }}
                         </div>
                     </div>
                     <a href="{{ route('profile.edit') }}" class="text-slate-400 hover:text-blue-600 transition-colors">

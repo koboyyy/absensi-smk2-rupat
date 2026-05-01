@@ -6,6 +6,7 @@ use App\Models\Absensi;
 use App\Models\OrangTua;
 use App\Models\Guru;
 use App\Models\WaliKelas;
+use App\Models\SuratIzin;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -13,10 +14,33 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // --- LOGIKA REDIRECT BERDASARKAN ROLE ---
+
+        // Kepala Sekolah dan Guru BK langsung ke halaman Rekap
+        if ($user->role === 'guru_bk') {
+            return redirect()->route('bk.rekap.index'); // Sesuaikan dengan nama route rekap Anda
+        }
+
+        // Wali Kelas langsung ke halaman Absensi
+        if ($user->role === 'kepala_sekolah') {
+            return redirect()->route('kepsek.laporan.index'); // Sesuaikan dengan nama route absensi Anda
+        }
+
+        // Wali Kelas langsung ke halaman Absensi
+        if ($user->role === 'wali_kelas') {
+            return redirect()->route('wali.rekap.index'); // Sesuaikan dengan nama route absensi Anda
+        }
+
+        // --- LOGIKA DASHBOARD UNTUK ROLE LAIN (Admin, Guru, Orang Tua) ---
+
         $guru = Guru::where('user_id', $user->id)->first();
         $waliKelas = $guru ? $guru->waliKelas : null;
         $kelas = $waliKelas ? $waliKelas->kelas : null;
-
 
         $stats = [
             'H' => 0,
@@ -25,22 +49,19 @@ class DashboardController extends Controller
             'A' => 0,
         ];
 
-        if (!$user) {
-            return redirect()->route('login');
+        // Admin: total global (Jika Admin tidak di-redirect)
+        if ($user->role === 'admin') {
+            // $stats = Absensi::query()
+            //     ->selectRaw('status, COUNT(*) as total')
+            //     ->groupBy('status')
+            //     ->pluck('total', 'status')
+            //     ->toArray() + $stats;
+            return redirect()->route('admin.users.index');
         }
 
-        // Admin/Kepsek: total global
-        if (in_array($user->role, ['admin', 'kepala_sekolah'], true)) {
-            $stats = Absensi::query()
-                ->selectRaw('status, COUNT(*) as total')
-                ->groupBy('status')
-                ->pluck('total', 'status')
-                ->toArray() + $stats;
-        }
-
-        // Guru/BK: total absensi yang terkait jadwal guru
-        if (in_array($user->role, ['guru', 'guru_bk'], true)) {
-            $guruId = Guru::query()->where('user_id', $user->id)->value('guru_id');
+        // Guru: total absensi yang terkait jadwal guru tersebut
+        if ($user->role === 'guru') {
+            $guruId = $guru ? $guru->guru_id : null;
             if ($guruId) {
                 $stats = Absensi::query()
                     ->whereHas('jadwal', fn($q) => $q->where('guru_id', $guruId))
@@ -53,45 +74,26 @@ class DashboardController extends Controller
 
         // Orang tua: absensi anak-anaknya
         if ($user->role === 'orang_tua') {
-            $ortuId = OrangTua::query()->where('user_id', $user->id)->value('ortu_id');
-            if ($ortuId) {
-                $stats = Absensi::query()
-                    ->whereHas('siswa', fn($q) => $q->where('ortu_id', $ortuId))
-                    ->selectRaw('status, COUNT(*) as total')
-                    ->groupBy('status')
-                    ->pluck('total', 'status')
-                    ->toArray() + $stats;
-            }
+            // $ortuId = OrangTua::query()->where('user_id', $user->id)->value('ortu_id');
+            // if ($ortuId) {
+            //     $stats = Absensi::query()
+            //         ->whereHas('siswa', fn($q) => $q->where('ortu_id', $ortuId))
+            //         ->selectRaw('status, COUNT(*) as total')
+            //         ->groupBy('status')
+            //         ->pluck('total', 'status')
+            //         ->toArray() + $stats;
+            // }
+            return redirect()->route('ortu.jadwal.index');
         }
 
-        // Wali kelas: absensi siswa di kelas binaan
-        if ($user->role === 'wali_kelas') {
-            $guruId = Guru::query()->where('user_id', $user->id)->value('guru_id');
-            $kelasId = $guruId ? WaliKelas::query()->where('guru_id', $guruId)->value('kelas_id') : null;
-            if ($kelasId) {
-                $stats = Absensi::query()
-                    ->whereHas('siswa', fn($q) => $q->where('kelas_id', $kelasId))
-                    ->selectRaw('status, COUNT(*) as total')
-                    ->groupBy('status')
-                    ->pluck('total', 'status')
-                    ->toArray() + $stats;
-            }
-        }
-
+        // Menghitung surat izin pending khusus untuk Guru
         $unreadSuratCount = 0;
-        if ($user->role === 'guru') {
-            $guruId = \App\Models\Guru::where('user_id', $user->id)->value('guru_id');
-            $unreadSuratCount = \App\Models\SuratIzin::whereHas('jadwal', function ($q) use ($guruId) {
-                $q->where('guru_id', $guruId);
+        if ($user->role === 'guru' && $guru) {
+            $unreadSuratCount = SuratIzin::whereHas('jadwal', function ($q) use ($guru) {
+                $q->where('guru_id', $guru->guru_id);
             })->where('status', 'pending')->count();
         }
 
         return view('dashboard', compact('user', 'stats', 'kelas', 'unreadSuratCount'));
-
-        return view('dashboard', [
-            'user' => $user,
-            'stats' => $stats,
-            'kelas' => $kelas
-        ]);
     }
 }

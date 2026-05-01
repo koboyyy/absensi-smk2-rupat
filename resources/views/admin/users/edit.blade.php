@@ -31,7 +31,7 @@
             <select name="role" id="role-select"
                     class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 focus:border-blue-500 focus:outline-none dark:border-slate-800 dark:bg-slate-950">
                 @foreach($roles as $r)
-                    <option value="{{ $r }}" @selected(old('role', $item->role) === $r)>{{ $r }}</option>
+                    <option value="{{ $r }}" @selected(old('role', $item->role) === $r)>{{ Str::replace('_', ' ', $r) }}</option>
                 @endforeach
             </select>
             @error('role')<div class="mt-1 text-sm text-red-600">{{ $message }}</div>@enderror
