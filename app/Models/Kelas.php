@@ -16,6 +16,7 @@ class Kelas extends Model
         'tingkat',
         'jurusan',
     ];
+    
 
     public function siswas(): HasMany
     {

@@ -12,12 +12,22 @@ class MapelController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $items = Mapel::query()->orderBy('kode_mapel')->paginate(15);
-        return view('admin.mapel.index', compact('items'));
-    }
+        $search = $request->search;
 
+        $items = Mapel::query()
+            ->when($search, function ($query) use ($search) {
+                $query->where('kode_mapel', 'like', '%' . $search . '%')
+                    ->orWhere('nama_mapel', 'like', '%' . $search . '%');
+            })
+            ->orderBy('kode_mapel')
+            ->orderBy('nama_mapel')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.mapel.index', compact('items', 'search'));
+    }
     /**
      * Show the form for creating a new resource.
      */

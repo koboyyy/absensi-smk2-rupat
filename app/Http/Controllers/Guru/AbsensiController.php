@@ -17,13 +17,47 @@ class AbsensiController extends Controller
 {
     public function index()
     {
-        $guruId = Guru::query()->where('user_id', Auth::id())->value('guru_id');
+        $guruId = Guru::query()
+            ->where('user_id', Auth::id())
+            ->value('guru_id');
+
+        // Nama hari Indonesia
+        $hariIni = now()->locale('id')->translatedFormat('l');
+
         $jadwals = Jadwal::query()
             ->with(['kelas', 'mapel'])
+
             ->where('guru_id', $guruId)
-            ->orderBy('hari')
+
+            ->where('hari', $hariIni)
+
             ->orderBy('jam_mulai')
-            ->get();
+
+            ->get()
+
+            ->map(function ($jadwal) {
+
+                $sekarang = now()->format('H:i');
+
+                // STATUS PELAJARAN
+                if ($sekarang < $jadwal->jam_mulai) {
+
+                    $jadwal->status_pelajaran = 'belum_mulai';
+
+                } elseif (
+                    $sekarang >= $jadwal->jam_mulai &&
+                    $sekarang <= $jadwal->jam_selesai
+                ) {
+
+                    $jadwal->status_pelajaran = 'berlangsung';
+
+                } else {
+
+                    $jadwal->status_pelajaran = 'selesai';
+                }
+
+                return $jadwal;
+            });
 
         return view('guru.absensi.index', compact('jadwals'));
     }
@@ -60,34 +94,15 @@ class AbsensiController extends Controller
             'tanggal' => ['required', 'date'],
             'status' => ['required', 'array'],
             'status.*' => ['required', 'in:H,I,S,A'],
-            'foto_bukti' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
         ]);
 
         $tanggal = $data['tanggal'];
-
-        // 1. Cari absensi yang sudah ada untuk mengambil path foto bukti lama
-        $firstAbsensi = Absensi::where('jadwal_id', $jadwal->jadwal_id)
-            ->whereDate('tanggal', $tanggal)
-            ->first();
-
-        $path = $firstAbsensi->foto_bukti ?? null;
-
-        // 2. Jika ada file baru yang diupload
-        if ($request->hasFile('foto_bukti')) {
-            // Hapus foto lama dari storage jika ada
-            if ($path && Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
-
-            // Simpan foto bukti baru (misal: storage/app/public/absensi_bukti)
-            $path = $request->file('foto_bukti')->store('absensi_bukti', 'public');
-        }
 
         $kelasSiswaIds = Siswa::where('kelas_id', $jadwal->kelas_id)->pluck('siswa_id')->all();
         $allowed = array_flip($kelasSiswaIds);
 
         // 3. Simpan data menggunakan Transaksi Database
-        DB::transaction(function () use ($data, $jadwal, $tanggal, $path, $allowed) {
+        DB::transaction(function () use ($data, $jadwal, $tanggal, $allowed) {
             foreach ($data['status'] as $siswaId => $status) {
                 $siswaId = (int) $siswaId;
 
@@ -104,7 +119,6 @@ class AbsensiController extends Controller
                     ],
                     [
                         'status' => $status,
-                        'foto_bukti' => $path, // Semua siswa di jadwal/tanggal yang sama memiliki foto bukti yang sama
                         'status_kirim' => true,
                     ]
                 );

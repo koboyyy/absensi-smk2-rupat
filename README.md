@@ -1,6 +1,7 @@
 ## Sistem Absensi Siswa SMK Negeri 2 Rupat (Laravel)
 
 ### Fitur yang sudah discaffold
+
 - **Database**: migration + model + relasi untuk `users`, `gurus`, `orang_tuas`, `kelas`, `mapels`, `jadwals`, `siswas`, `absensis`, `surat_izins`, `wali_kelas`, `rekap_kelas`
 - **Auth**: login/logout session berbasis **username** + status akun (aktif/nonaktif)
 - **RBAC**: middleware `role` untuk membatasi akses per-aktor
@@ -9,6 +10,7 @@
 - **Orang Tua**: kirim **Surat Izin/Sakit** dengan upload bukti (tersimpan di `storage/app/public/surat_izin`)
 
 ### Cara Menjalankan
+
 1. Install dependency:
 
 ```bash
@@ -31,10 +33,13 @@ php artisan serve
 ```
 
 ### Akun Default
+
 - **username**: `admin`
 - **password**: `admin123`
 
 ### Asset Login (opsional)
+
 Letakkan file:
+
 - `public/images/school-bg.jpg` (background halaman login)
 - `public/images/logo-smkn2.png` (logo sekolah)

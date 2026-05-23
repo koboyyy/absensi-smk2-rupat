@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rekap Absensi - {{ $jadwal->mapel->nama_mapel }}</title>
     <style>
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-family: "Helvetica", "Arial", sans-serif;
             font-size: 11px;
             color: #333;
             line-height: 1.4;
@@ -31,9 +31,20 @@
             text-align: center;
             margin-right: 70px; /* Menyeimbangkan posisi teks karena ada logo di kiri */
         }
-        .header-text h2 { margin: 0; font-size: 14px; text-transform: uppercase; }
-        .header-text h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
-        .header-text p { margin: 2px 0; font-size: 10px; }
+        .header-text h2 {
+            margin: 0;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .header-text h1 {
+            margin: 0;
+            font-size: 18px;
+            text-transform: uppercase;
+        }
+        .header-text p {
+            margin: 2px 0;
+            font-size: 10px;
+        }
 
         /* Clearfix agar float tidak merusak elemen di bawahnya */
         .header-container::after {
@@ -91,7 +102,6 @@
     </style>
 </head>
 <body>
-
     <div class="header-container">
         <div class="logo-container">
             @php
@@ -104,8 +114,8 @@
                     $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
                 }
             @endphp
-            @if($base64)
-                <img src="{{ $base64 }}" alt="Logo SMKN 2 Rupat">
+            @if ($base64)
+                <img src="{{ $base64 }}" alt="Logo SMKN 2 Rupat" />
             @endif
         </div>
         <div class="header-text">
@@ -122,7 +132,9 @@
             <td class="label">Mata Pelajaran</td>
             <td>: {{ $jadwal->mapel->nama_mapel }}</td>
             <td class="label">Periode</td>
-            <td>: {{ \Carbon\Carbon::create()->month((int)$bulan)->translatedFormat('F') }} {{ $tahun }}</td>
+            <td>
+                : {{ \Carbon\Carbon::create()->month((int)$bulan)->translatedFormat('F') }} {{ $tahun }}
+            </td>
         </tr>
         <tr>
             <td class="label">Kelas</td>
@@ -145,8 +157,8 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($siswas as $index => $s)
-                @php($data = $rekap[$s->siswa_id] ?? null)
+            @foreach ($siswas as $index => $s)
+                @php ($data = $rekap[$s->siswa_id] ?? null)
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td class="text-center">{{ $s->nis }}</td>
@@ -159,7 +171,7 @@
             @endforeach
         </tbody>
         <tfoot>
-            <tr style="background-color: #f9f9f9; font-weight: bold;">
+            <tr style="background-color: #f9f9f9; font-weight: bold">
                 <td colspan="3" class="text-center">TOTAL AKUMULASI</td>
                 <td class="text-center">{{ $rekap->sum('total_hadir') }}</td>
                 <td class="text-center">{{ $rekap->sum('total_sakit') }}</td>
@@ -177,8 +189,7 @@
             <p class="font-bold"><u>{{ Auth::user()->guru->nama_guru }}</u></p>
             <p>NIP. {{ Auth::user()->guru->nip ?? '...........................' }}</p>
         </div>
-        <div style="clear: both;"></div>
+        <div style="clear: both"></div>
     </div>
-
 </body>
 </html>

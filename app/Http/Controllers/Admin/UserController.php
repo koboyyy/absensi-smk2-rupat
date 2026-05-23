@@ -18,11 +18,22 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Menggunakan eager loading agar tidak berat saat load data kelas (jika ada relasi)
-        $items = User::query()->orderBy('role')->orderBy('username')->paginate(15);
-        return view('admin.users.index', compact('items'));
+        $search = $request->search;
+
+        $items = User::query()
+            ->when($search, function ($query) use ($search) {
+                $query->where('username', 'like', '%' . $search . '%')
+                    ->orWhere('role', 'like', '%' . $search . '%')
+                    ->orWhere('status', 'like', '%' . $search . '%');
+            })
+            ->orderBy('role')
+            ->orderBy('username')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.users.index', compact('items', 'search'));
     }
 
     public function create()
@@ -210,10 +221,17 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'Akun berhasil dihapus.');
     }
 
-    // public function exportPdf()
-    // {
-    //     $items = User::query()->orderBy('role')->orderBy('username')->get();
-    //     $pdf = Pdf::loadView('admin.users.pdf', compact('items'))->setPaper('a4', 'portrait');
-    //     return $pdf->download('users.pdf');
-    // }
+    public function exportPdf()
+    {
+        $items = User::query()
+            ->orderBy('role')
+            ->orderBy('username')
+            ->get();
+
+        $pdf = Pdf::loadView('admin.users.pdf', compact('items'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('data-users.pdf');
+    }
+
 }

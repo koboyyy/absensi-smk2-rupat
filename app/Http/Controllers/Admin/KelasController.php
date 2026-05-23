@@ -12,10 +12,23 @@ class KelasController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $items = Kelas::query()->orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->paginate(15);
-        return view('admin.kelas.index', compact('items'));
+        $search = $request->search;
+
+        $items = Kelas::query()
+            ->when($search, function ($query) use ($search) {
+                $query->where('nama_kelas', 'like', '%' . $search . '%')
+                    ->orWhere('tingkat', 'like', '%' . $search . '%')
+                    ->orWhere('jurusan', 'like', '%' . $search . '%');
+            })
+            ->orderBy('tingkat')
+            ->orderBy('jurusan')
+            ->orderBy('nama_kelas')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('admin.kelas.index', compact('items', 'search'));
     }
 
     /**

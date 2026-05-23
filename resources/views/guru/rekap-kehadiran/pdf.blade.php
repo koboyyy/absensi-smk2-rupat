@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>Rekap Kehadiran - {{ $tanggal }}</title>
     <style>
         body {
-            font-family: 'Helvetica', Arial, sans-serif;
+            font-family: "Helvetica", Arial, sans-serif;
             font-size: 11px;
             color: #333;
             line-height: 1.4;
@@ -30,9 +30,20 @@
             text-align: center;
             margin-right: 70px; /* Menyeimbangkan posisi teks karena ada logo di kiri */
         }
-        .header-text h2 { margin: 0; font-size: 14px; text-transform: uppercase; }
-        .header-text h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
-        .header-text p { margin: 2px 0; font-size: 10px; }
+        .header-text h2 {
+            margin: 0;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .header-text h1 {
+            margin: 0;
+            font-size: 18px;
+            text-transform: uppercase;
+        }
+        .header-text p {
+            margin: 2px 0;
+            font-size: 10px;
+        }
 
         /* Clearfix agar float tidak merusak elemen di bawahnya */
         .header-container::after {
@@ -50,7 +61,7 @@
             padding: 2px 0;
             vertical-align: top;
         }
-        
+
         .main-table {
             width: 100%;
             border-collapse: collapse;
@@ -62,15 +73,22 @@
             font-weight: bold;
             text-transform: uppercase;
         }
-        .main-table th, .main-table td {
+        .main-table th,
+        .main-table td {
             border: 1px solid #000;
             padding: 6px 4px;
         }
-        
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .font-bold { font-weight: bold; }
-        
+
+        .text-center {
+            text-align: center;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .font-bold {
+            font-weight: bold;
+        }
+
         .footer-row {
             background-color: #f9f9f9;
             font-weight: bold;
@@ -91,7 +109,6 @@
     </style>
 </head>
 <body>
-
     <div class="header-container">
         <div class="logo-container">
             @php
@@ -104,8 +121,8 @@
                     $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
                 }
             @endphp
-            @if($base64)
-                <img src="{{ $base64 }}" alt="Logo SMKN 2 Rupat">
+            @if ($base64)
+                <img src="{{ $base64 }}" alt="Logo SMKN 2 Rupat" />
             @endif
         </div>
         <div class="header-text">
@@ -117,13 +134,20 @@
         </div>
     </div>
 
-    <h3 class="text-center" style="text-decoration: underline; margin-bottom: 15px; font-size: 13px;">LAPORAN REKAP KEHADIRAN SISWA</h3>
+    <h3
+        class="text-center"
+        style="text-decoration: underline; margin-bottom: 15px; font-size: 13px"
+    >
+        LAPORAN REKAP KEHADIRAN SISWA
+    </h3>
 
     <table class="info-table">
         <tr>
             <td width="15%">Tanggal</td>
             <td width="2%">:</td>
-            <td width="33%">{{ \Carbon\Carbon::parse($tanggal)->translatedFormat('d F Y') }}</td>
+            <td width="33%">
+                {{ \Carbon\Carbon::parse($tanggal)->translatedFormat('d F Y') }}
+            </td>
             <td width="15%">Guru Pengampu</td>
             <td width="2%">:</td>
             <td>{{ Auth::user()->guru->nama_guru }}</td>
@@ -154,7 +178,7 @@
             @php 
                 $grandH = 0; $grandS = 0; $grandI = 0; $grandA = 0; 
             @endphp
-            @forelse($items as $index => $item)
+            @forelse ($items as $index => $item)
                 @php
                     $grandH += $item->total_hadir;
                     $grandS += $item->total_sakit;
@@ -172,7 +196,9 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="text-center">Data tidak ditemukan untuk periode ini.</td>
+                    <td colspan="7" class="text-center">
+                        Data tidak ditemukan untuk periode ini.
+                    </td>
                 </tr>
             @endforelse
         </tbody>
@@ -195,8 +221,7 @@
             <p><strong>{{ Auth::user()->guru->nama_guru }}</strong></p>
             <p>NIP. {{ Auth::user()->guru->nip ?? '..........................' }}</p>
         </div>
-        <div style="clear: both;"></div>
+        <div style="clear: both"></div>
     </div>
-
 </body>
 </html>

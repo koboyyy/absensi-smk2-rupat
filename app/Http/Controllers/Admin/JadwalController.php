@@ -15,15 +15,100 @@ class JadwalController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $items = Jadwal::query()
-            ->with(['kelas', 'guru', 'mapel'])
-            ->orderBy('hari')
-            ->orderBy('jam_mulai')
-            ->paginate(15);
+        $search = $request->search;
 
-        return view('admin.jadwal.index', compact('items'));
+        $kelasId = $request->kelas_id;
+
+        $jurusan = $request->jurusan;
+
+        // LIST FILTER KELAS
+        $kelasList = Kelas::query()
+            ->orderBy('tingkat')
+            ->orderBy('jurusan')
+            ->orderBy('nama_kelas')
+            ->get();
+
+        // LIST FILTER JURUSAN
+        $jurusans = Kelas::query()
+            ->select('jurusan')
+            ->distinct()
+            ->pluck('jurusan');
+
+        $items = Jadwal::query()
+
+            ->with(['kelas', 'guru', 'mapel'])
+
+            // SEARCH
+            ->when($search, function ($query) use ($search) {
+
+                $query->where('hari', 'like', '%' . $search . '%')
+
+                    ->orWhereHas('kelas', function ($q) use ($search) {
+
+                        $q->where('nama_kelas', 'like', '%' . $search . '%');
+
+                    })
+
+                    ->orWhereHas('guru', function ($q) use ($search) {
+
+                        $q->where('nama_guru', 'like', '%' . $search . '%');
+
+                    })
+
+                    ->orWhereHas('mapel', function ($q) use ($search) {
+
+                        $q->where('nama_mapel', 'like', '%' . $search . '%');
+
+                    });
+            })
+
+            // FILTER KELAS
+            ->when($kelasId, function ($query) use ($kelasId) {
+
+                $query->where('kelas_id', $kelasId);
+
+            })
+
+            // FILTER JURUSAN
+            ->when($jurusan, function ($query) use ($jurusan) {
+
+                $query->whereHas('kelas', function ($q) use ($jurusan) {
+
+                    $q->where('jurusan', $jurusan);
+
+                });
+
+            })
+
+            ->orderByRaw("
+                FIELD(
+                    hari,
+                    'Senin',
+                    'Selasa',
+                    'Rabu',
+                    'Kamis',
+                    'Jumat',
+                    'Sabtu',
+                    'Minggu'
+                )
+            ")
+
+            ->orderBy('jam_mulai')
+
+            ->paginate(15)
+
+            ->withQueryString();
+
+        return view('admin.jadwal.index', compact(
+            'items',
+            'search',
+            'kelasId',
+            'jurusan',
+            'kelasList',
+            'jurusans'
+        ));
     }
 
     /**
@@ -31,10 +116,25 @@ class JadwalController extends Controller
      */
     public function create()
     {
-        $kelas = Kelas::query()->orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
-        $guru = Guru::query()->orderBy('nama_guru')->get();
-        $mapel = Mapel::query()->orderBy('kode_mapel')->get();
-        return view('admin.jadwal.create', compact('kelas', 'guru', 'mapel'));
+        $kelas = Kelas::query()
+            ->orderBy('tingkat')
+            ->orderBy('jurusan')
+            ->orderBy('nama_kelas')
+            ->get();
+
+        $guru = Guru::query()
+            ->orderBy('nama_guru')
+            ->get();
+
+        $mapel = Mapel::query()
+            ->orderBy('kode_mapel')
+            ->get();
+
+        return view('admin.jadwal.create', compact(
+            'kelas',
+            'guru',
+            'mapel'
+        ));
     }
 
     /**
@@ -53,7 +153,9 @@ class JadwalController extends Controller
 
         Jadwal::create($data);
 
-        return redirect()->route('admin.jadwal.index')->with('success', 'Data jadwal berhasil ditambahkan.');
+        return redirect()
+            ->route('admin.jadwal.index')
+            ->with('success', 'Data jadwal berhasil ditambahkan.');
     }
 
     /**
@@ -70,10 +172,27 @@ class JadwalController extends Controller
     public function edit(string $id)
     {
         $item = Jadwal::query()->findOrFail($id);
-        $kelas = Kelas::query()->orderBy('tingkat')->orderBy('jurusan')->orderBy('nama_kelas')->get();
-        $guru = Guru::query()->orderBy('nama_guru')->get();
-        $mapel = Mapel::query()->orderBy('kode_mapel')->get();
-        return view('admin.jadwal.edit', compact('item', 'kelas', 'guru', 'mapel'));
+
+        $kelas = Kelas::query()
+            ->orderBy('tingkat')
+            ->orderBy('jurusan')
+            ->orderBy('nama_kelas')
+            ->get();
+
+        $guru = Guru::query()
+            ->orderBy('nama_guru')
+            ->get();
+
+        $mapel = Mapel::query()
+            ->orderBy('kode_mapel')
+            ->get();
+
+        return view('admin.jadwal.edit', compact(
+            'item',
+            'kelas',
+            'guru',
+            'mapel'
+        ));
     }
 
     /**
@@ -82,6 +201,7 @@ class JadwalController extends Controller
     public function update(Request $request, string $id)
     {
         $item = Jadwal::query()->findOrFail($id);
+
         $data = $request->validate([
             'kelas_id' => ['required', 'exists:kelas,kelas_id'],
             'guru_id' => ['required', 'exists:gurus,guru_id'],
@@ -93,7 +213,9 @@ class JadwalController extends Controller
 
         $item->update($data);
 
-        return redirect()->route('admin.jadwal.index')->with('success', 'Data jadwal berhasil diperbarui.');
+        return redirect()
+            ->route('admin.jadwal.index')
+            ->with('success', 'Data jadwal berhasil diperbarui.');
     }
 
     /**
@@ -102,15 +224,90 @@ class JadwalController extends Controller
     public function destroy(string $id)
     {
         $item = Jadwal::query()->findOrFail($id);
+
         $item->delete();
 
-        return redirect()->route('admin.jadwal.index')->with('success', 'Data jadwal berhasil dihapus.');
+        return redirect()
+            ->route('admin.jadwal.index')
+            ->with('success', 'Data jadwal berhasil dihapus.');
     }
 
-    public function exportPdf()
+    /**
+     * Export PDF
+     */
+    public function exportPdf(Request $request)
     {
-        $items = Jadwal::query()->with(['kelas', 'guru', 'mapel'])->orderBy('hari')->orderBy('jam_mulai')->get();
-        $pdf = Pdf::loadView('admin.jadwal.pdf', compact('items'))->setPaper('a4', 'landscape');
+        $kelasId = $request->kelas_id;
+
+        $jurusan = $request->jurusan;
+
+        $search = $request->search;
+
+        $items = Jadwal::query()
+
+            ->with(['kelas', 'guru', 'mapel'])
+
+            ->when($search, function ($query) use ($search) {
+
+                $query->where('hari', 'like', '%' . $search . '%')
+
+                    ->orWhereHas('kelas', function ($q) use ($search) {
+
+                        $q->where('nama_kelas', 'like', '%' . $search . '%');
+
+                    })
+
+                    ->orWhereHas('guru', function ($q) use ($search) {
+
+                        $q->where('nama_guru', 'like', '%' . $search . '%');
+
+                    })
+
+                    ->orWhereHas('mapel', function ($q) use ($search) {
+
+                        $q->where('nama_mapel', 'like', '%' . $search . '%');
+
+                    });
+            })
+
+            ->when($kelasId, function ($query) use ($kelasId) {
+
+                $query->where('kelas_id', $kelasId);
+
+            })
+
+            ->when($jurusan, function ($query) use ($jurusan) {
+
+                $query->whereHas('kelas', function ($q) use ($jurusan) {
+
+                    $q->where('jurusan', $jurusan);
+
+                });
+
+            })
+
+            ->orderByRaw("
+                FIELD(
+                    hari,
+                    'Senin',
+                    'Selasa',
+                    'Rabu',
+                    'Kamis',
+                    'Jumat',
+                    'Sabtu',
+                    'Minggu'
+                )
+            ")
+
+            ->orderBy('jam_mulai')
+
+            ->get();
+
+        $pdf = Pdf::loadView(
+            'admin.jadwal.pdf',
+            compact('items')
+        )->setPaper('a4', 'landscape');
+
         return $pdf->download('jadwal.pdf');
     }
 }

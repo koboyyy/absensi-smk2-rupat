@@ -48,11 +48,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('siswa/export/pdf', [SiswaController::class, 'exportPdf'])->name('siswa.export.pdf');
 
         Route::resource('users', UserController::class);
+        Route::get('/admin/users/export/pdf', [UserController::class, 'exportPdf'])->name('users.export.pdf');
+
         Route::resource('guru', GuruController::class);
         Route::resource('kelas', KelasController::class);
         Route::resource('mapel', MapelController::class);
         Route::resource('jadwal', JadwalController::class);
         Route::resource('siswa', SiswaController::class);
+
+
     });
 
     // GRUP ORANG TUA

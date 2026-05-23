@@ -1,24 +1,59 @@
 <!doctype html>
 <html lang="id">
 <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>Rekap Absen Siswa - SMKN 2 Rupat</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; line-height: 1.4; color: #333; }
-        .text-center { text-align: center; }
-        .text-bold { font-weight: bold; }
-        .uppercase { text-transform: uppercase; }
+        body {
+            font-family:
+                DejaVu Sans,
+                sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-bold {
+            font-weight: bold;
+        }
+        .uppercase {
+            text-transform: uppercase;
+        }
 
-        .meta { margin-bottom: 10px; width: 100%; }
+        .meta {
+            margin-bottom: 10px;
+            width: 100%;
+        }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        table.data th, table.data td { border: 1px solid #000; padding: 5px; }
-        table.data th { background: #f2f2f2; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        table.data th,
+        table.data td {
+            border: 1px solid #000;
+            padding: 5px;
+        }
+        table.data th {
+            background: #f2f2f2;
+        }
 
         /* Footer Tanda Tangan */
-        .footer-table { margin-top: 30px; border: none; }
-        .footer-table td { border: none !important; width: 50%; vertical-align: top; }
-        .signature-space { height: 60px; }
+        .footer-table {
+            margin-top: 30px;
+            border: none;
+        }
+        .footer-table td {
+            border: none !important;
+            width: 50%;
+            vertical-align: top;
+        }
+        .signature-space {
+            height: 60px;
+        }
 
         /* === KOP SURAT (sama dengan rekap wali) === */
         .header-container {
@@ -39,9 +74,20 @@
             text-align: center;
             margin-right: 70px;
         }
-        .header-text h2 { margin: 0; font-size: 14px; text-transform: uppercase; }
-        .header-text h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
-        .header-text p { margin: 2px 0; font-size: 10px; }
+        .header-text h2 {
+            margin: 0;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .header-text h1 {
+            margin: 0;
+            font-size: 18px;
+            text-transform: uppercase;
+        }
+        .header-text p {
+            margin: 2px 0;
+            font-size: 10px;
+        }
         .header-container::after {
             content: "";
             clear: both;
@@ -50,7 +96,6 @@
     </style>
 </head>
 <body>
-
     {{-- KOP SURAT --}}
     <div class="header-container">
         <div class="logo-container">
@@ -60,7 +105,7 @@
                 $data = file_get_contents($path);
                 $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
             @endphp
-            <img src="{{ $base64 }}" alt="Logo">
+            <img src="{{ $base64 }}" alt="Logo" />
         </div>
         <div class="header-text">
             <h2>PEMERINTAH PROVINSI RIAU</h2>
@@ -74,31 +119,36 @@
 
     <div class="meta">
         Periode: {{ str_pad((string)$bulan, 2, '0', STR_PAD_LEFT) }}/{{ $tahun }}
-        @if($jurusan) &bull; Jurusan: {{ $jurusan }} @endif
+        @if ($jurusan) &bull; Jurusan:{{ $jurusan }} @endif
     </div>
 
     <table class="data">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 30px;" class="text-center">NO</th>
+                <th rowspan="2" style="width: 30px" class="text-center">NO</th>
                 <th rowspan="2">NAMA</th>
-                <th rowspan="2" style="width: 40px;" class="text-center">L/P</th>
-                <th colspan="3" class="text-center">TOTAL ABSENSI DALAM 1 BULAN</th>
+                <th rowspan="2" style="width: 40px" class="text-center">L/P</th>
+                <th colspan="3" class="text-center">
+                    TOTAL ABSENSI DALAM 1 BULAN
+                </th>
             </tr>
             <tr>
-                <th style="width: 60px;" class="text-center">SAKIT</th>
-                <th style="width: 60px;" class="text-center">ALFA</th>
-                <th style="width: 60px;" class="text-center">IZIN</th>
+                <th style="width: 60px" class="text-center">SAKIT</th>
+                <th style="width: 60px" class="text-center">ALFA</th>
+                <th style="width: 60px" class="text-center">IZIN</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($perKelas as $index => $r)
+            @foreach ($perKelas as $index => $r)
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td>{{ $r->nama_siswa }}</td>
                     <td class="text-center">{{ $r->jenis_kelamin }}</td>
                     <td class="text-center">{{ $r->sakit ?? 0 }}</td>
-                    <td class="text-center" style="{{ ($r->alfa ?? 0) > 0 ? 'background-color: #ffcccc; color: red; font-weight: bold;' : '' }}">
+                    <td
+                        class="text-center"
+                        style="{{ ($r->alfa ?? 0) > 0 ? 'background-color: #ffcccc; color: red; font-weight: bold;' : '' }}"
+                    >
                         {{ $r->alfa ?? 0 }}
                     </td>
                     <td class="text-center">{{ $r->izin ?? 0 }}</td>
@@ -119,21 +169,24 @@
     <table class="footer-table">
         <tr>
             <td class="text-center">
-                Mengetahui,<br>
-                Kepala SMK Negeri 2 Rupat<br>
+                Mengetahui,<br />
+                Kepala SMK Negeri 2 Rupat<br />
                 <div class="signature-space"></div>
-                <span class="text-bold" style="text-decoration: underline;">Fitria, S.Pd., M.M.</span><br>
+                <span class="text-bold" style="text-decoration: underline"
+                    >Fitria, S.Pd., M.M.</span
+                ><br />
                 NIP. 197809292005012005
             </td>
             <td class="text-center">
-                Pangkalan Pinang, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br>
-                Guru Bimbingan Konseling<br>
+                Pangkalan Pinang, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br />
+                Guru Bimbingan Konseling<br />
                 <div class="signature-space"></div>
-                <span class="text-bold" style="text-decoration: underline;">Nur Hefni Ebri, S.Pd.</span><br>
+                <span class="text-bold" style="text-decoration: underline"
+                    >Nur Hefni Ebri, S.Pd.</span
+                ><br />
                 NIP. .............................
             </td>
         </tr>
     </table>
-
 </body>
 </html>

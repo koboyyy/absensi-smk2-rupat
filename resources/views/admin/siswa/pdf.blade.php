@@ -1,14 +1,32 @@
 <!doctype html>
 <html lang="id">
 <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title>Data Siswa - SMKN 2 Rupat</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; line-height: 1.4; color: #333; }
+        body {
+            font-family:
+                DejaVu Sans,
+                sans-serif;
+            font-size: 10px;
+            line-height: 1.4;
+            color: #333;
+        }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 5px; }
-        th { background: #f3f4f6; text-align: left; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 5px;
+        }
+        th {
+            background: #f3f4f6;
+            text-align: left;
+        }
 
         /* === KOP SURAT === */
         .header-container {
@@ -36,9 +54,20 @@
             vertical-align: middle;
             text-align: center;
         }
-        .text-cell h2 { margin: 0; font-size: 14px; text-transform: uppercase; }
-        .text-cell h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
-        .text-cell p  { margin: 2px 0; font-size: 10px; }
+        .text-cell h2 {
+            margin: 0;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .text-cell h1 {
+            margin: 0;
+            font-size: 18px;
+            text-transform: uppercase;
+        }
+        .text-cell p {
+            margin: 2px 0;
+            font-size: 10px;
+        }
         .spacer-cell {
             display: table-cell;
             width: 110px;
@@ -46,7 +75,6 @@
     </style>
 </head>
 <body>
-
     {{-- KOP SURAT --}}
     <div class="header-container">
         <div class="header-inner">
@@ -57,7 +85,7 @@
                     $data = file_get_contents($path);
                     $base64 = 'data:image/' . $type . ';base64,' . base64_encode($data);
                 @endphp
-                <img src="{{ $base64 }}" alt="Logo">
+                <img src="{{ $base64 }}" alt="Logo" />
             </div>
             <div class="text-cell">
                 <h2>PEMERINTAH PROVINSI RIAU</h2>
@@ -82,7 +110,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($items as $item)
+            @foreach ($items as $item)
                 <tr>
                     <td>{{ $item->nis }}</td>
                     <td>{{ $item->nama_siswa }}</td>
@@ -93,6 +121,5 @@
             @endforeach
         </tbody>
     </table>
-
 </body>
 </html>
