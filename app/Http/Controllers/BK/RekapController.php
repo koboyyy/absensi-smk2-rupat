@@ -13,85 +13,182 @@ class RekapController extends Controller
 {
     public function index(Request $request)
     {
-        $bulan = (int) $request->query('bulan', now()->month);
+        $bulan = (int) $request->query(
+            'bulan',
+            now()->month
+        );
 
-        $tahun = (int) $request->query('tahun', now()->year);
+        $tahun = (int) $request->query(
+            'tahun',
+            now()->year
+        );
 
-        $jurusan = $request->query('jurusan');
+        $jurusan = $request->query(
+            'jurusan'
+        );
 
-        $kelasId = $request->query('kelas_id');
+        $kelasId = $request->query(
+            'kelas_id'
+        );
 
-        $siswaId = $request->query('siswa_id');
+        $siswaId = $request->query(
+            'siswa_id'
+        );
 
         $from = now()
-            ->setDate($tahun, $bulan, 1)
+
+            ->setDate(
+                $tahun,
+                $bulan,
+                1
+            )
+
             ->startOfMonth()
+
             ->toDateString();
 
         $to = now()
-            ->setDate($tahun, $bulan, 1)
+
+            ->setDate(
+                $tahun,
+                $bulan,
+                1
+            )
+
             ->endOfMonth()
+
             ->toDateString();
 
-        // DATA FILTER
+        /**
+         * =====================================
+         * DATA FILTER
+         * =====================================
+         */
+
         $kelasQuery = Kelas::query()
+
             ->orderBy('tingkat')
+
             ->orderBy('jurusan')
+
             ->orderBy('nama_kelas');
 
         $jurusans = (clone $kelasQuery)
+
             ->select('jurusan')
+
             ->distinct()
+
             ->pluck('jurusan')
+
             ->values();
 
-        $kelasList = (clone $kelasQuery)->get();
+        $kelasList = (clone $kelasQuery)
 
-        $siswaList = Siswa::query()
-            ->with('kelas')
-            ->orderBy('nama_siswa')
             ->get();
 
-        // BASE QUERY
+        $siswaList = Siswa::query()
+
+            ->with('kelas')
+
+            ->orderBy('nama_siswa')
+
+            ->get();
+
+        /**
+         * =====================================
+         * BASE QUERY
+         * =====================================
+         */
+
         $base = Absensi::query()
 
-            ->whereBetween('tanggal', [$from, $to])
+            ->whereBetween(
+                'tanggal',
+                [$from, $to]
+            )
 
-            ->whereIn('status', ['S', 'I', 'A'])
+            ->whereIn(
+                'status',
+                ['S', 'I', 'A']
+            )
 
-            ->when($siswaId, function ($q) use ($siswaId) {
-                $q->where('absensis.siswa_id', $siswaId);
-            })
+            ->when(
+                $siswaId,
+                function ($q) use ($siswaId) {
 
-            ->whereHas('siswa.kelas', function ($q) use ($jurusan, $kelasId) {
-
-                if ($jurusan) {
-                    $q->where('jurusan', $jurusan);
+                    $q->where(
+                        'absensis.siswa_id',
+                        $siswaId
+                    );
                 }
+            )
 
-                if ($kelasId) {
-                    $q->where('kelas_id', $kelasId);
+            ->whereHas(
+                'siswa.kelas',
+                function ($q) use ($jurusan, $kelasId) {
+
+                    if ($jurusan) {
+
+                        $q->where(
+                            'jurusan',
+                            $jurusan
+                        );
+                    }
+
+                    if ($kelasId) {
+
+                        $q->where(
+                            'kelas_id',
+                            $kelasId
+                        );
+                    }
                 }
-            });
+            );
 
-        // SUMMARY
+        /**
+         * =====================================
+         * SUMMARY
+         * =====================================
+         */
+
         $summaryByStatus = (clone $base)
 
-            ->selectRaw('status, COUNT(*) as total')
+            ->selectRaw(
+                'status, COUNT(*) as total'
+            )
 
             ->groupBy('status')
 
-            ->pluck('total', 'status')
+            ->pluck(
+                'total',
+                'status'
+            )
 
             ->toArray();
 
         $summary = [
-            'S' => (int) ($summaryByStatus['S'] ?? 0),
-            'I' => (int) ($summaryByStatus['I'] ?? 0),
-            'A' => (int) ($summaryByStatus['A'] ?? 0),
+
+            'S' => (int) (
+                $summaryByStatus['S'] ?? 0
+            ),
+
+            'I' => (int) (
+                $summaryByStatus['I'] ?? 0
+            ),
+
+            'A' => (int) (
+                $summaryByStatus['A'] ?? 0
+            ),
+
         ];
 
-        // REKAP PER KELAS
+        /**
+         * =====================================
+         * REKAP PER KELAS
+         * =====================================
+         */
+
         $perKelas = (clone $base)
 
             ->join(
@@ -109,8 +206,11 @@ class RekapController extends Controller
             )
 
             ->selectRaw('
+
                 kelas.kelas_id,
+
                 kelas.nama_kelas,
+
                 kelas.jurusan,
 
                 SUM(
@@ -136,6 +236,7 @@ class RekapController extends Controller
                         ELSE 0
                     END
                 ) as alfa
+
             ')
 
             ->groupBy(
@@ -150,12 +251,20 @@ class RekapController extends Controller
 
             ->get();
 
-        // REKAP PER SISWA
+        /**
+         * =====================================
+         * REKAP PER SISWA
+         * =====================================
+         */
+
         $perSiswa = (clone $base)
 
-            ->with(['siswa.kelas'])
+            ->with([
+                'siswa.kelas'
+            ])
 
             ->selectRaw('
+
                 absensis.siswa_id,
 
                 SUM(
@@ -181,9 +290,12 @@ class RekapController extends Controller
                         ELSE 0
                     END
                 ) as alfa
+
             ')
 
-            ->groupBy('absensis.siswa_id')
+            ->groupBy(
+                'absensis.siswa_id'
+            )
 
             ->orderByDesc('alfa')
 
@@ -195,44 +307,89 @@ class RekapController extends Controller
 
             ->withQueryString();
 
-        return view('bk.rekap.index', compact(
-            'bulan',
-            'tahun',
-            'jurusan',
-            'kelasId',
-            'siswaId',
-            'jurusans',
-            'kelasList',
-            'siswaList',
-            'summary',
-            'perKelas',
-            'perSiswa'
-        ));
+        return view(
+            'bk.rekap.index',
+            compact(
+
+                'bulan',
+                'tahun',
+
+                'jurusan',
+
+                'kelasId',
+
+                'siswaId',
+
+                'jurusans',
+
+                'kelasList',
+
+                'siswaList',
+
+                'summary',
+
+                'perKelas',
+
+                'perSiswa'
+
+            )
+        );
     }
 
     public function exportPdf(Request $request)
     {
-        $bulan = (int) $request->query('bulan', now()->month);
+        $bulan = (int) $request->query(
+            'bulan',
+            now()->month
+        );
 
-        $tahun = (int) $request->query('tahun', now()->year);
+        $tahun = (int) $request->query(
+            'tahun',
+            now()->year
+        );
 
-        $jurusan = $request->query('jurusan');
+        $jurusan = $request->query(
+            'jurusan'
+        );
 
-        $kelasId = $request->query('kelas_id');
+        $kelasId = $request->query(
+            'kelas_id'
+        );
 
-        $siswaId = $request->query('siswa_id');
+        $siswaId = $request->query(
+            'siswa_id'
+        );
 
         $from = now()
-            ->setDate($tahun, $bulan, 1)
+
+            ->setDate(
+                $tahun,
+                $bulan,
+                1
+            )
+
             ->startOfMonth()
+
             ->toDateString();
 
         $to = now()
-            ->setDate($tahun, $bulan, 1)
+
+            ->setDate(
+                $tahun,
+                $bulan,
+                1
+            )
+
             ->endOfMonth()
+
             ->toDateString();
 
-        // NAMA KELAS
+        /**
+         * =====================================
+         * NAMA KELAS
+         * =====================================
+         */
+
         $namaKelas = 'Semua Kelas';
 
         if ($kelasId) {
@@ -243,133 +400,250 @@ class RekapController extends Controller
             )->value('nama_kelas');
         }
 
-        // BASE QUERY
+        /**
+         * =====================================
+         * BASE QUERY
+         * =====================================
+         */
+
         $base = Absensi::query()
 
-            ->whereBetween('tanggal', [$from, $to])
+            ->whereBetween(
+                'tanggal',
+                [$from, $to]
+            )
 
-            ->whereIn('status', ['S', 'I', 'A'])
+            ->whereIn(
+                'status',
+                ['S', 'I', 'A']
+            )
 
-            ->when($siswaId, function ($q) use ($siswaId) {
-                $q->where('absensis.siswa_id', $siswaId);
-            })
+            ->when(
+                $siswaId,
+                function ($q) use ($siswaId) {
 
-            ->whereHas('siswa.kelas', function ($q) use ($jurusan, $kelasId) {
-
-                if ($jurusan) {
-                    $q->where('jurusan', $jurusan);
+                    $q->where(
+                        'absensis.siswa_id',
+                        $siswaId
+                    );
                 }
+            )
 
-                if ($kelasId) {
-                    $q->where('kelas_id', $kelasId);
+            ->whereHas(
+                'siswa.kelas',
+                function ($q) use ($jurusan, $kelasId) {
+
+                    if ($jurusan) {
+
+                        $q->where(
+                            'jurusan',
+                            $jurusan
+                        );
+                    }
+
+                    if ($kelasId) {
+
+                        $q->where(
+                            'kelas_id',
+                            $kelasId
+                        );
+                    }
                 }
-            });
+            );
 
-        // SUMMARY
+        /**
+         * =====================================
+         * SUMMARY
+         * =====================================
+         */
+
         $summaryByStatus = (clone $base)
 
-            ->selectRaw('status, COUNT(*) as total')
+            ->selectRaw(
+                'status, COUNT(*) as total'
+            )
 
             ->groupBy('status')
 
-            ->pluck('total', 'status')
+            ->pluck(
+                'total',
+                'status'
+            )
 
             ->toArray();
 
         $summary = [
-            'S' => (int) ($summaryByStatus['S'] ?? 0),
-            'I' => (int) ($summaryByStatus['I'] ?? 0),
-            'A' => (int) ($summaryByStatus['A'] ?? 0),
+
+            'S' => (int) (
+                $summaryByStatus['S'] ?? 0
+            ),
+
+            'I' => (int) (
+                $summaryByStatus['I'] ?? 0
+            ),
+
+            'A' => (int) (
+                $summaryByStatus['A'] ?? 0
+            ),
+
         ];
 
-        // DATA PDF
+        /**
+         * =====================================
+         * DATA PDF
+         * =====================================
+         */
+
         $perKelas = Siswa::query()
 
-            ->with('kelas')
-
-            ->when($kelasId, function ($q) use ($kelasId) {
-                $q->where('kelas_id', $kelasId);
-            })
-
-            ->when($jurusan, function ($q) use ($jurusan) {
-
-                $q->whereHas('kelas', function ($k) use ($jurusan) {
-
-                    $k->where('jurusan', $jurusan);
-
-                });
-            })
-
-            ->when($siswaId, function ($q) use ($siswaId) {
-
-                $q->where('siswas.siswa_id', $siswaId);
-
-            })
-
-            ->leftJoin('absensis', function ($join) use ($from, $to) {
-
-                $join->on(
-                    'siswas.siswa_id',
-                    '=',
-                    'absensis.siswa_id'
-                )
-
-                    ->whereBetween(
-                        'absensis.tanggal',
-                        [$from, $to]
-                    );
-            })
-
-            ->selectRaw('
-                siswas.nama_siswa,
-                siswas.nis,
-                siswas.jenis_kelamin,
-
-                SUM(
-                    CASE
-                        WHEN absensis.status = "S"
-                        THEN 1
-                        ELSE 0
-                    END
-                ) as sakit,
-
-                SUM(
-                    CASE
-                        WHEN absensis.status = "I"
-                        THEN 1
-                        ELSE 0
-                    END
-                ) as izin,
-
-                SUM(
-                    CASE
-                        WHEN absensis.status = "A"
-                        THEN 1
-                        ELSE 0
-                    END
-                ) as alfa
-            ')
-
-            ->groupBy(
-                'siswas.siswa_id',
-                'siswas.nama_siswa',
-                'siswas.nis',
-                'siswas.jenis_kelamin'
+            ->leftJoin(
+                'kelas',
+                'siswas.kelas_id',
+                '=',
+                'kelas.kelas_id'
             )
 
-            ->orderBy('siswas.nama_siswa')
+            ->leftJoin(
+                'absensis',
+                function ($join) use ($from, $to) {
+
+                    $join->on(
+                        'siswas.siswa_id',
+                        '=',
+                        'absensis.siswa_id'
+                    )
+
+                        ->whereBetween(
+                            'absensis.tanggal',
+                            [$from, $to]
+                        );
+                }
+            )
+
+            ->when(
+                $kelasId,
+                function ($q) use ($kelasId) {
+
+                    $q->where(
+                        'siswas.kelas_id',
+                        $kelasId
+                    );
+                }
+            )
+
+            ->when(
+                $jurusan,
+                function ($q) use ($jurusan) {
+
+                    $q->where(
+                        'kelas.jurusan',
+                        $jurusan
+                    );
+                }
+            )
+
+            ->when(
+                $siswaId,
+                function ($q) use ($siswaId) {
+
+                    $q->where(
+                        'siswas.siswa_id',
+                        $siswaId
+                    );
+                }
+            )
+
+            ->selectRaw('
+
+        siswas.siswa_id,
+
+        siswas.nama_siswa,
+
+        siswas.nis,
+
+        siswas.jenis_kelamin,
+
+        kelas.nama_kelas,
+
+        kelas.jurusan,
+
+        SUM(
+            CASE
+                WHEN absensis.status = "S"
+                THEN 1
+                ELSE 0
+            END
+        ) as sakit,
+
+        SUM(
+            CASE
+                WHEN absensis.status = "I"
+                THEN 1
+                ELSE 0
+            END
+        ) as izin,
+
+        SUM(
+            CASE
+                WHEN absensis.status = "A"
+                THEN 1
+                ELSE 0
+            END
+        ) as alfa
+
+    ')
+
+            ->groupBy(
+
+                'siswas.siswa_id',
+
+                'siswas.nama_siswa',
+
+                'siswas.nis',
+
+                'siswas.jenis_kelamin',
+
+                'kelas.nama_kelas',
+
+                'kelas.jurusan'
+
+            )
+
+            ->orderBy(
+                'siswas.nama_siswa'
+            )
 
             ->get();
 
-        $pdf = Pdf::loadView('bk.rekap.pdf', compact(
-            'bulan',
-            'tahun',
-            'jurusan',
-            'kelasId',
-            'summary',
-            'perKelas',
-            'namaKelas'
-        ))->setPaper('a4', 'portrait');
+        /**
+         * =====================================
+         * PDF
+         * =====================================
+         */
+
+        $pdf = Pdf::loadView(
+            'bk.rekap.pdf',
+            compact(
+
+                'bulan',
+
+                'tahun',
+
+                'jurusan',
+
+                'kelasId',
+
+                'summary',
+
+                'perKelas',
+
+                'namaKelas'
+
+            )
+        )->setPaper(
+                'a4',
+                'potrait'
+            );
 
         return $pdf->download(
             'rekap-absensi.pdf'

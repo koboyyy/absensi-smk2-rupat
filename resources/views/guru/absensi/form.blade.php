@@ -51,7 +51,7 @@
             </button>
 
             <a
-                href="{{ route('guru.absensi.rekap-jadwal', $jadwal->jadwal_id) }}"
+                href="{{ route('guru.rekap-kehadiran.index', $jadwal->jadwal_id) }}"
                 class="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-black text-white hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20"
             >
                 <i class="fa-solid fa-file-lines"></i>

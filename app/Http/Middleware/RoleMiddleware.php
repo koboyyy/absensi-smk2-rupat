@@ -11,31 +11,93 @@ class RoleMiddleware
 {
     /**
      * Handle an incoming request.
-     *
-     * @param  Closure(Request): (Response)  $next
      */
-    public function handle(Request $request, Closure $next, string ...$roles): Response
-    {
+    public function handle(
+        Request $request,
+        Closure $next,
+        string ...$roles
+    ): Response {
+
         $user = Auth::user();
 
-        // dd([
-        //     'role_user_di_database' => $user->role,
-        //     'role_yang_diminta_di_route' => $roles
-        // ]);
-
+        /**
+         * BELUM LOGIN
+         */
         if (!$user) {
+
             return redirect()->route('login');
         }
 
-        if ($roles !== [] && !in_array($user->role, $roles, true)) {
-            abort(403);
+        /**
+         * AKUN NONAKTIF
+         */
+        if ($user->status !== 'aktif') {
+
+            Auth::logout();
+
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'username' => 'Akun anda nonaktif.',
+                ]);
         }
 
-        if ($user->status !== 'aktif') {
-            Auth::logout();
-            return redirect()->route('login')->withErrors([
-                'username' => 'Akun anda nonaktif.',
-            ]);
+        /**
+         * ROLE USER KOSONG
+         */
+        if (empty($user->roles)) {
+
+            abort(403, 'Role akun belum diatur.');
+        }
+
+        /**
+         * ROLE AKTIF
+         */
+        $activeRole = session('active_role');
+
+        /**
+         * BELUM PILIH ROLE
+         */
+        if (!$activeRole) {
+
+            // jika cuma 1 role langsung pakai
+            if (count($user->roles) === 1) {
+
+                $activeRole = $user->roles[0];
+
+                session([
+                    'active_role' => $activeRole
+                ]);
+
+            } else {
+
+                return redirect()
+                    ->route('role.select');
+            }
+        }
+
+        /**
+         * CEK APAKAH ROLE AKTIF
+         * MILIK USER
+         */
+        if (!in_array($activeRole, $user->roles)) {
+
+            session()->forget('active_role');
+
+            return redirect()
+                ->route('role.select');
+        }
+
+        /**
+         * CEK AKSES ROLE
+         *
+         * contoh:
+         * middleware('role:admin')
+         * middleware('role:guru,wali_kelas')
+         */
+        if (!in_array($activeRole, $roles)) {
+
+            abort(403, 'Anda tidak memiliki akses.');
         }
 
         return $next($request);

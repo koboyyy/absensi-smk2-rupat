@@ -21,174 +21,688 @@ class AbsensiController extends Controller
             ->where('user_id', Auth::id())
             ->value('guru_id');
 
-        // Nama hari Indonesia
-        $hariIni = now()->locale('id')->translatedFormat('l');
-
         $jadwals = Jadwal::query()
-            ->with(['kelas', 'mapel'])
 
-            ->where('guru_id', $guruId)
+            ->with([
+                'kelas',
+                'mapel'
+            ])
 
-            ->where('hari', $hariIni)
+            ->where(
+                'guru_id',
+                $guruId
+            )
+
+            ->orderBy('hari')
 
             ->orderBy('jam_mulai')
 
-            ->get()
-
-            ->map(function ($jadwal) {
-
-                $sekarang = now()->format('H:i');
-
-                // STATUS PELAJARAN
-                if ($sekarang < $jadwal->jam_mulai) {
-
-                    $jadwal->status_pelajaran = 'belum_mulai';
-
-                } elseif (
-                    $sekarang >= $jadwal->jam_mulai &&
-                    $sekarang <= $jadwal->jam_selesai
-                ) {
-
-                    $jadwal->status_pelajaran = 'berlangsung';
-
-                } else {
-
-                    $jadwal->status_pelajaran = 'selesai';
-                }
-
-                return $jadwal;
-            });
-
-        return view('guru.absensi.index', compact('jadwals'));
-    }
-
-    public function showForm(Request $request, Jadwal $jadwal)
-    {
-        $guruId = Guru::query()->where('user_id', Auth::id())->value('guru_id');
-        abort_unless($jadwal->guru_id === $guruId, 403);
-
-        $tanggal = $request->query('tanggal', now()->toDateString());
-
-        // Mengambil data siswa lengkap dengan kolom 'foto'
-        $siswas = Siswa::query()
-            ->where('kelas_id', $jadwal->kelas_id)
-            ->select('siswa_id', 'nama_siswa', 'nis', 'foto', 'kelas_id') // Pastikan 'foto' ada di sini
-            ->orderBy('nama_siswa')
             ->get();
 
-        $existing = Absensi::query()
-            ->where('jadwal_id', $jadwal->jadwal_id)
-            ->whereDate('tanggal', $tanggal)
-            ->get()
-            ->keyBy('siswa_id');
-
-        return view('guru.absensi.form', compact('jadwal', 'tanggal', 'siswas', 'existing'));
+        return view(
+            'guru.absensi.index',
+            compact('jadwals')
+        );
     }
 
-    public function store(Request $request, Jadwal $jadwal)
-    {
-        $guruId = Guru::query()->where('user_id', Auth::id())->value('guru_id');
-        abort_unless($jadwal->guru_id === $guruId, 403);
+    public function showForm(
+        Request $request,
+        Jadwal $jadwal
+    ) {
 
+        /**
+         * VALIDASI GURU
+         */
+        $guruId = Guru::query()
+
+            ->where(
+                'user_id',
+                Auth::id()
+            )
+
+            ->value('guru_id');
+
+        abort_unless(
+            $jadwal->guru_id === $guruId,
+            403
+        );
+
+        /**
+         * CEK JADWAL SUDAH SELESAI
+         */
+        if ($jadwal->is_selesai) {
+
+            return redirect()
+
+                ->route('dashboard')
+
+                ->with(
+                    'error',
+                    'Jam pelajaran sudah selesai.'
+                );
+        }
+
+        /**
+         * TANGGAL
+         */
+        $tanggal = $request->query(
+            'tanggal',
+            now()->toDateString()
+        );
+
+        /**
+         * SISWA
+         */
+        $siswas = Siswa::query()
+
+            ->where(
+                'kelas_id',
+                $jadwal->kelas_id
+            )
+
+            ->select(
+                'siswa_id',
+                'nama_siswa',
+                'nis',
+                'foto',
+                'kelas_id'
+            )
+
+            ->orderBy('nama_siswa')
+
+            ->get();
+
+        /**
+         * EXISTING ABSENSI
+         */
+        $existing = Absensi::query()
+
+            ->where(
+                'jadwal_id',
+                $jadwal->jadwal_id
+            )
+
+            ->whereDate(
+                'tanggal',
+                $tanggal
+            )
+
+            ->get()
+
+            ->keyBy('siswa_id');
+
+        return view(
+            'guru.absensi.form',
+            compact(
+                'jadwal',
+                'tanggal',
+                'siswas',
+                'existing'
+            )
+        );
+    }
+
+    public function store(
+        Request $request,
+        Jadwal $jadwal
+    ) {
+
+        /**
+         * VALIDASI GURU
+         */
+        $guruId = Guru::query()
+
+            ->where(
+                'user_id',
+                Auth::id()
+            )
+
+            ->value('guru_id');
+
+        abort_unless(
+            $jadwal->guru_id === $guruId,
+            403
+        );
+
+        /**
+         * CEK JADWAL SUDAH SELESAI
+         */
+        if ($jadwal->is_selesai) {
+
+            return back()->with(
+                'error',
+                'Jam pelajaran sudah selesai.'
+            );
+        }
+
+        /**
+         * VALIDASI
+         */
         $data = $request->validate([
-            'tanggal' => ['required', 'date'],
-            'status' => ['required', 'array'],
-            'status.*' => ['required', 'in:H,I,S,A'],
+
+            'tanggal' => [
+                'required',
+                'date'
+            ],
+
+            'status' => [
+                'required',
+                'array'
+            ],
+
+            'status.*' => [
+                'required',
+                'in:H,I,S,A'
+            ],
+
+            'foto_bukti' => [
+                'nullable',
+                'image',
+                'mimes:jpeg,png,jpg',
+                'max:2048'
+            ],
+
         ]);
 
+        /**
+         * TANGGAL
+         */
         $tanggal = $data['tanggal'];
 
-        $kelasSiswaIds = Siswa::where('kelas_id', $jadwal->kelas_id)->pluck('siswa_id')->all();
-        $allowed = array_flip($kelasSiswaIds);
+        /**
+         * AMBIL ABSENSI PERTAMA
+         */
+        $firstAbsensi = Absensi::query()
 
-        // 3. Simpan data menggunakan Transaksi Database
-        DB::transaction(function () use ($data, $jadwal, $tanggal, $allowed) {
-            foreach ($data['status'] as $siswaId => $status) {
-                $siswaId = (int) $siswaId;
+            ->where(
+                'jadwal_id',
+                $jadwal->jadwal_id
+            )
 
-                // Pastikan hanya siswa yang ada di kelas tersebut yang diproses
-                if (!isset($allowed[$siswaId])) {
+            ->whereDate(
+                'tanggal',
+                $tanggal
+            )
+
+            ->first();
+
+        /**
+         * FOTO LAMA
+         */
+        $path =
+            $firstAbsensi->foto_bukti
+            ?? null;
+
+        /**
+         * FOTO BARU
+         */
+        if (
+            $request->hasFile(
+                'foto_bukti'
+            )
+        ) {
+
+            /**
+             * HAPUS FOTO LAMA
+             */
+            if (
+
+                $path &&
+
+                Storage::disk('public')
+                    ->exists($path)
+
+            ) {
+
+                Storage::disk('public')
+                    ->delete($path);
+            }
+
+            /**
+             * UPLOAD BARU
+             */
+            $path = $request
+
+                ->file('foto_bukti')
+
+                ->store(
+                    'absensi_bukti',
+                    'public'
+                );
+        }
+
+        /**
+         * SISWA VALID
+         */
+        $kelasSiswaIds = Siswa::query()
+
+            ->where(
+                'kelas_id',
+                $jadwal->kelas_id
+            )
+
+            ->pluck('siswa_id')
+
+            ->all();
+
+        $allowed =
+            array_flip(
+                $kelasSiswaIds
+            );
+
+        /**
+         * TRANSACTION
+         */
+        DB::transaction(function () use ($data, $jadwal, $tanggal, $path, $allowed) {
+
+            foreach (
+                $data['status']
+                as $siswaId => $status
+            ) {
+
+                $siswaId =
+                    (int) $siswaId;
+
+                /**
+                 * VALIDASI SISWA
+                 */
+                if (
+                    !isset(
+                    $allowed[$siswaId]
+                )
+                ) {
+
                     continue;
                 }
 
+                /**
+                 * SIMPAN ABSENSI
+                 */
                 Absensi::updateOrCreate(
+
                     [
-                        'siswa_id' => $siswaId,
-                        'jadwal_id' => $jadwal->jadwal_id,
-                        'tanggal' => $tanggal,
+
+                        'siswa_id' =>
+                            $siswaId,
+
+                        'jadwal_id' =>
+                            $jadwal->jadwal_id,
+
+                        'tanggal' =>
+                            $tanggal,
+
                     ],
+
                     [
-                        'status' => $status,
-                        'status_kirim' => true,
+
+                        'status' =>
+                            $status,
+
+                        'foto_bukti' =>
+                            $path,
+
+                        'status_kirim' =>
+                            true,
+
                     ]
                 );
             }
         });
 
         return redirect()
-            ->route('guru.absensi.form', ['jadwal' => $jadwal->jadwal_id, 'tanggal' => $tanggal])
-            ->with('success', 'Absensi dan bukti KBM berhasil disimpan.');
+
+            ->route(
+                'guru.absensi.form',
+                [
+                    'jadwal' =>
+                        $jadwal->jadwal_id,
+
+                    'tanggal' =>
+                        $tanggal
+                ]
+            )
+
+            ->with(
+                'success',
+                'Absensi dan bukti KBM berhasil disimpan.'
+            );
     }
 
-    // Method rekapJadwal dan exportPdf tetap sama seperti sebelumnya...
-    public function rekapJadwal(Request $request, Jadwal $jadwal)
-    {
-        $guruId = Guru::query()->where('user_id', Auth::id())->value('guru_id');
-        abort_unless($jadwal->guru_id === $guruId, 403);
+    public function rekapJadwal(
+        Request $request,
+        Jadwal $jadwal
+    ) {
 
-        $bulan = $request->query('bulan', date('m'));
-        $tahun = $request->query('tahun', date('Y'));
+        /**
+         * VALIDASI GURU
+         */
+        $guruId = Guru::query()
 
+            ->where(
+                'user_id',
+                Auth::id()
+            )
+
+            ->value('guru_id');
+
+        abort_unless(
+            $jadwal->guru_id === $guruId,
+            403
+        );
+
+        /**
+         * FILTER
+         */
+        $bulan = $request->query(
+            'bulan',
+            date('m')
+        );
+
+        $tahun = $request->query(
+            'tahun',
+            date('Y')
+        );
+
+        /**
+         * SISWA
+         */
         $siswas = Siswa::query()
-            ->where('kelas_id', $jadwal->kelas_id)
+
+            ->where(
+                'kelas_id',
+                $jadwal->kelas_id
+            )
+
             ->orderBy('nama_siswa')
+
             ->get();
 
+        /**
+         * REKAP
+         */
         $rekap = Absensi::query()
-            ->where('jadwal_id', $jadwal->jadwal_id)
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->select(
-                'siswa_id',
-                DB::raw("SUM(CASE WHEN status = 'H' THEN 1 ELSE 0 END) as total_hadir"),
-                DB::raw("SUM(CASE WHEN status = 'S' THEN 1 ELSE 0 END) as total_sakit"),
-                DB::raw("SUM(CASE WHEN status = 'I' THEN 1 ELSE 0 END) as total_izin"),
-                DB::raw("SUM(CASE WHEN status = 'A' THEN 1 ELSE 0 END) as total_alfa")
+
+            ->where(
+                'jadwal_id',
+                $jadwal->jadwal_id
             )
+
+            ->whereMonth(
+                'tanggal',
+                $bulan
+            )
+
+            ->whereYear(
+                'tanggal',
+                $tahun
+            )
+
+            ->select(
+
+                'siswa_id',
+
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN status = 'H'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as total_hadir
+                "),
+
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN status = 'S'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as total_sakit
+                "),
+
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN status = 'I'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as total_izin
+                "),
+
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN status = 'A'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as total_alfa
+                ")
+
+            )
+
             ->groupBy('siswa_id')
+
             ->get()
+
             ->keyBy('siswa_id');
 
-        return view('guru.absensi.rekap_jadwal', compact('jadwal', 'siswas', 'rekap', 'bulan', 'tahun'));
+        return view(
+            'guru.absensi.rekap_jadwal',
+            compact(
+                'jadwal',
+                'siswas',
+                'rekap',
+                'bulan',
+                'tahun'
+            )
+        );
     }
 
-    public function exportPdf(Request $request, Jadwal $jadwal)
-    {
-        $guruId = Guru::where('user_id', Auth::id())->value('guru_id');
-        abort_unless($jadwal->guru_id === $guruId, 403);
+    public function exportPdf(
+        Request $request,
+        Jadwal $jadwal
+    ) {
 
-        $bulan = $request->query('bulan', date('m'));
-        $tahun = $request->query('tahun', date('Y'));
+        /**
+         * VALIDASI GURU
+         */
+        $guruId = Guru::query()
 
-        $siswas = Siswa::where('kelas_id', $jadwal->kelas_id)->orderBy('nama_siswa')->get();
-
-        $rekap = Absensi::where('jadwal_id', $jadwal->jadwal_id)
-            ->whereMonth('tanggal', $bulan)
-            ->whereYear('tanggal', $tahun)
-            ->select(
-                'siswa_id',
-                DB::raw("SUM(CASE WHEN status = 'H' THEN 1 ELSE 0 END) as total_hadir"),
-                DB::raw("SUM(CASE WHEN status = 'S' THEN 1 ELSE 0 END) as total_sakit"),
-                DB::raw("SUM(CASE WHEN status = 'I' THEN 1 ELSE 0 END) as total_izin"),
-                DB::raw("SUM(CASE WHEN status = 'A' THEN 1 ELSE 0 END) as total_alfa")
+            ->where(
+                'user_id',
+                Auth::id()
             )
+
+            ->value('guru_id');
+
+        abort_unless(
+            $jadwal->guru_id === $guruId,
+            403
+        );
+
+        /**
+         * FILTER
+         */
+        $bulan = $request->query(
+            'bulan',
+            date('m')
+        );
+
+        $tahun = $request->query(
+            'tahun',
+            date('Y')
+        );
+
+        /**
+         * SISWA
+         */
+        $siswas = Siswa::query()
+
+            ->where(
+                'kelas_id',
+                $jadwal->kelas_id
+            )
+
+            ->orderBy('nama_siswa')
+
+            ->get();
+
+        /**
+         * REKAP
+         */
+        $rekap = Absensi::query()
+
+            ->where(
+                'jadwal_id',
+                $jadwal->jadwal_id
+            )
+
+            ->whereMonth(
+                'tanggal',
+                $bulan
+            )
+
+            ->whereYear(
+                'tanggal',
+                $tahun
+            )
+
+            ->select(
+
+                'siswa_id',
+
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN status = 'H'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as total_hadir
+                "),
+
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN status = 'S'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as total_sakit
+                "),
+
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN status = 'I'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as total_izin
+                "),
+
+                DB::raw("
+                    SUM(
+                        CASE
+                            WHEN status = 'A'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as total_alfa
+                ")
+
+            )
+
             ->groupBy('siswa_id')
+
             ->get()
+
             ->keyBy('siswa_id');
 
-        $pdf = Pdf::loadView('guru.absensi.rekap_pdf', compact('jadwal', 'siswas', 'rekap', 'bulan', 'tahun'));
+        /**
+         * PDF
+         */
+        $pdf = Pdf::loadView(
+            'guru.absensi.rekap_pdf',
+            compact(
+                'jadwal',
+                'siswas',
+                'rekap',
+                'bulan',
+                'tahun'
+            )
+        );
 
-        $fileName = 'Rekap_Absen_' . str_replace(' ', '_', $jadwal->mapel->nama_mapel) . '_' . $bulan . '_' . $tahun . '.pdf';
-        return $pdf->download($fileName);
+        /**
+         * FILE NAME
+         */
+        $fileName =
+            'Rekap_Absen_' .
+
+            str_replace(
+                ' ',
+                '_',
+                $jadwal->mapel->nama_mapel
+            )
+
+            . '_' .
+
+            $bulan .
+
+            '_' .
+
+            $tahun .
+
+            '.pdf';
+
+        return $pdf->download(
+            $fileName
+        );
+    }
+
+    /**
+     * =====================================
+     * SELESAIKAN PELAJARAN
+     * =====================================
+     */
+    public function selesai(
+        Jadwal $jadwal
+    ) {
+
+        /**
+         * VALIDASI GURU
+         */
+        $guruId = Guru::query()
+
+            ->where(
+                'user_id',
+                Auth::id()
+            )
+
+            ->value('guru_id');
+
+        abort_unless(
+            $jadwal->guru_id === $guruId,
+            403
+        );
+
+        /**
+         * UPDATE STATUS
+         */
+        $jadwal->update([
+
+            'is_selesai' => true
+
+        ]);
+
+        return back()->with(
+
+            'success',
+            'Jam pelajaran berhasil diselesaikan.'
+
+        );
     }
 }

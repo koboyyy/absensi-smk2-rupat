@@ -154,15 +154,18 @@
             @foreach ($siswas as $index => $siswa)
                 <tr>
                     <td>{{ $index + 1 }}</td>
+
                     <td>{{ $siswa->nama_siswa }}</td>
 
-                    {{-- Loop Tanggal --}}
+                    {{-- LOOP TANGGAL --}}
                     @for ($i=1; $i<=31; $i++)
                         <td>
-                            @php 
-                // Pastikan key array ini sesuai dengan yang dikirim dari controller
-                $st = $dataAbsen[$siswa->siswa_id][$i] ?? ''; 
-            @endphp
+                            @php
+
+                        $st =
+                            $dataAbsen[$siswa->siswa_id][$i] ?? '';
+
+                    @endphp
 
                             @if ($st == 'H')
                                 H
@@ -174,15 +177,79 @@
                                 A
                             @endif
                         </td>
+
                     @endfor
 
-                    {{-- Total Rekap --}}
+                    {{-- TOTAL PER SISWA --}}
                     <td>{{ $totalPerSiswa[$siswa->siswa_id]['H'] ?? 0 }}</td>
+
                     <td>{{ $totalPerSiswa[$siswa->siswa_id]['S'] ?? 0 }}</td>
+
                     <td>{{ $totalPerSiswa[$siswa->siswa_id]['I'] ?? 0 }}</td>
+
                     <td>{{ $totalPerSiswa[$siswa->siswa_id]['A'] ?? 0 }}</td>
                 </tr>
+
             @endforeach
+
+            <!-- =========================
+            BARIS TOTAL
+            ========================= -->
+
+            <tr style="background-color: #e5e7eb; font-weight: bold">
+                <td colspan="2">TOTAL</td>
+
+                TOTAL PER TANGGAL
+                @for ($i=1; $i<=31; $i++)
+                    @php
+
+                $totalHarian = 0;
+
+                foreach ($siswas as $siswa)
+                {
+                    $status =
+                        $dataAbsen[$siswa->siswa_id][$i] ?? '';
+
+                    if ($status == 'H')
+                    {
+                        $totalHarian++;
+                    }
+                }
+
+            @endphp
+                    <td></td>
+
+                @endfor
+
+                {{-- TOTAL REKAP --}}
+                <td>
+                    {{
+                collect($totalPerSiswa)
+                ->sum('H')
+            }}
+                </td>
+
+                <td>
+                    {{
+                collect($totalPerSiswa)
+                ->sum('S')
+            }}
+                </td>
+
+                <td>
+                    {{
+                collect($totalPerSiswa)
+                ->sum('I')
+            }}
+                </td>
+
+                <td>
+                    {{
+                collect($totalPerSiswa)
+                ->sum('A')
+            }}
+                </td>
+            </tr>
         </tbody>
     </table>
 
